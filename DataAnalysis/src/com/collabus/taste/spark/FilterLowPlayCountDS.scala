@@ -49,24 +49,46 @@ object FilterLowPlayCountDS {
     
     val selectPlayCounts = spark.sql("SELECT playCount FROM triplets")
     
-    val sumPlayCounts = schemaTriplets.agg(sum("playCount")).first().getLong(0)
+    val selectUserIDs = spark.sql("SELECT userID FROM triplets GROUP BY userID")
     
-    val numOfSongPlay = selectPlayCounts.count()
+    val selectSongIDs = spark.sql("SELECT songID FROM triplets GROUP BY songID")
     
-    val avgPlayCounts = sumPlayCounts.toDouble / numOfSongPlay.toDouble
+    //val sumPlayCounts = schemaTriplets.agg(sum("playCount")).first().getLong(0)
     
-    val scaledPlayCounts = selectPlayCounts.map(x => x.getInt(0) / avgPlayCounts)
+    //val numOfSongPlay = selectPlayCounts.count()
     
-    println(scaledPlayCounts.show())
+    //val avgPlayCounts = sumPlayCounts.toDouble / numOfSongPlay.toDouble
     
-    val result = selectPlayCounts.collect()
+    //val scaledPlayCounts = selectPlayCounts.map(x => x.getInt(0) / avgPlayCounts)
     
-    val pw = new PrintWriter(new File("/Users/ekrem/No-cloud/datasets4senior/echonest_scaled_playcounts.txt"))
+    //println(scaledPlayCounts.show())
+    /**
+    val resultPlay = selectPlayCounts.collect()
     
-    result.foreach(row=>pw.write(row.get(0).toString()+"\n"))
+    val pw = new PrintWriter(new File("/Users/ekrem/No-cloud/datasets4senior/echonest_only_playcounts.txt"))
+    
+    resultPlay.foreach(row=>pw.write(row.get(0).toString()+"\n"))
     
     pw.close
- 
+    */
+    /**
+    val resultUser = selectUserIDs.collect()
+    
+    val pw2 = new PrintWriter(new File("/Users/ekrem/No-cloud/datasets4senior/echonest_only_userids.txt"))
+    
+    resultUser.foreach(row=>pw2.write(row.get(0).toString()+"\n"))
+    
+    pw2.close
+    */
+    
+    val resultSong = selectSongIDs.collect()
+    
+    val pw3 = new PrintWriter(new File("/Users/ekrem/No-cloud/datasets4senior/echonest_only_songids.txt"))
+    
+    resultSong.foreach(row=>pw3.write(row.get(0).toString()+"\n"))
+    
+    pw3.close
+ 		
     spark.stop()
   }
 }

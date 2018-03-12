@@ -212,5 +212,7 @@
 	<classpathentry kind="lib" path="/usr/local/Cellar/apache-spark/2.2.1/libexec/jars/xmlenc-0.52.jar"/>
 	<classpathentry kind="lib" path="/usr/local/Cellar/apache-spark/2.2.1/libexec/jars/xz-1.0.jar"/>
 	<classpathentry kind="lib" path="/usr/local/Cellar/apache-spark/2.2.1/libexec/jars/zookeeper-3.4.6.jar"/>
+	<classpathentry kind="lib" path="/usr/local/Cellar/apache-spark/2.2.1/libexec/jars/hdf5s-0.0.1.jar"/>
+	<classpathentry kind="lib" path="/usr/local/Cellar/apache-spark/2.2.1/libexec/jars/sis-jhdf5-batteries_included.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

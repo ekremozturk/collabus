@@ -35,6 +35,6 @@ ranges = histogram[1]
 play_counts_percentage = []
 
 for count in play_counts_in_range:
-  play_counts_percentage.append(count/play_count_entries_total)
+  play_counts_percentage.append(count/play_count_entries_total*100)
 
 file.close()
