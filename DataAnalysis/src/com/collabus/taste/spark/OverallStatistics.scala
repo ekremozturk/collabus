@@ -6,7 +6,7 @@ import org.apache.log4j._
 import java.io._
 import scala.math.min
 
-object FilterLowPlayCount {
+object OverallStatistics {
   
   def parseLines(line: String) = {
     val fields = line.split("\\W+")
@@ -54,19 +54,17 @@ object FilterLowPlayCount {
     println("Top 10 songs are: ")
     top10songs.foreach(println)
     
-    //extract valuable user-song-play_count pairs
-    //val valuableUserSongPairs = filteredPlayCounts.filter(x=> )
+    //val selectPlayCounts = spark.sql("SELECT playCount FROM triplets")
     
-    //collect (rdd action)
-    //val result = valuableUserSongPairs.collect()
+    //val selectUserIDs = spark.sql("SELECT userID FROM triplets GROUP BY userID")
     
-    //val pw = new PrintWriter(new File("/Users/ekrem/No-cloud/datasets4senior/train_triplets_echonest_filtered.txt"))
+    //val selectSongIDs = spark.sql("SELECT songID FROM triplets GROUP BY songID")
     
-    //result.foreach(pair => pw.write(pair._1 + " " + pair._2 + " " +pair._3 + "\n"))
+    //val sumPlayCounts = schemaTriplets.agg(sum("playCount")).first().getLong(0)
     
-    //pw.close
-    //println("Finished "+ frequentUsers.count())
-    //println("Finished "+ valuableUserSongPairs.count())
+    //val numOfSongPlay = selectPlayCounts.count()
+    
+    //val avgPlayCounts = sumPlayCounts.toDouble / numOfSongPlay.toDouble
     
   }
 }

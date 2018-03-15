@@ -21,7 +21,7 @@ object HDF5read {
       .appName("Spark SQL HDF5 MSD")
       .master("local[*]")
       .getOrCreate()
-
+      
     val t_start = System.nanoTime()
     
     val h5_files_path = "sparky://files" //Input for virtual path of files
@@ -41,7 +41,12 @@ object HDF5read {
       
       val track_path = track.getString(0)
       
-      val df_track = HDF5getters.to_triplet(track_path)       
+      val current_track = HDF5getters.to_triplet(track_path)       
+      
+      println("")
+      println("Track with ID "+ current_track.track_id)
+      println(current_track.artist_terms.show)
+      println(current_track.similar_artists.show)
       
     }
    
