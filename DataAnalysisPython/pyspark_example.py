@@ -70,7 +70,7 @@ df3= df3.na.fill(0)
 df3 = df3.withColumn('total', df3['liked']+ df3['not_liked'])
 df3 = df3.withColumn('liking_percent' , df3['liked'] / df3['total'])
 
-number_of_songs = df3.count()
+number_of_songs = 308000 #fix this
 
 df3 = df3.withColumn('listen_percent', df3['total']/number_of_songs )
 
