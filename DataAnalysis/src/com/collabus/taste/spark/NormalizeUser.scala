@@ -9,7 +9,7 @@ import org.apache.spark.sql.functions._
 import scala.math.sqrt
 import scala.collection.mutable.ListBuffer
 
-object UUCF {
+object NormalizeUser {
   
   case class Triplet(userID: String, songID: String, playCount: Int)
   
@@ -77,10 +77,39 @@ object UUCF {
     
     val nTriplets = joined.withColumn("playCount", $"playCount" - $"mean").drop("mean")
     
-    val nTripletsOnlyLiked = nTriplets.filter(nTriplets("playCount") > 0)
+    //val nTripletsLiked = nTriplets.filter(nTriplets("playCount") > 0.5)
     
-    println(nTriplets.show)
+    //val nTripletsDisliked = nTriplets.filter(nTriplets("playCount") < -0.5)
+    
+    //val nTripletsNatural = nTriplets.filter((nTriplets("playCount") < 0.5) && (nTriplets("playCount") > -0.5))
 
+    val randUser = userMean.select("userID").sample(false, 0.01)
+    
+    val randTriplets = nTriplets.join(randUser, "userID").cache()
+    
+    val firstUser = randUser.first()
+    
+    val triplet_u = randTriplets.filter(randTriplets("userID") === firstUser.getString(0))
+ 
+    println(triplet_u.toString())
+    
+    val resultRandUser = randUser.collect()
+    
+    for(user <- resultRandUser){
+      
+      val currentID = user.getString(0)
+      
+      val triplet_v = randTriplets.filter(randTriplets("userID") === currentID) 
+      
+      val joined = triplet_u.join(triplet_v, "songID").drop("songID", "userID").toDF("U", "V").cache()
+      
+      if(joined.count()>0){
+        val r_u = joined.select("U").collect()
+        val r_v = joined.select("V").collect()
+        println((currentID + " " + pearsonCorr(r_u, r_v)))
+      }
+    }
+    
     spark.stop()
 
   }
