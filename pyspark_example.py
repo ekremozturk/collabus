@@ -17,7 +17,7 @@ class Triplet:
         self.playCount = playCount
         
 def parseLines(line):
-    fields = line.split()
+    fields = line.split(" ")
     triplet = Triplet (fields[0], fields[1], int(fields[2]))        
     return triplet
 
