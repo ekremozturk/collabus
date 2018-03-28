@@ -9,11 +9,11 @@ import org.apache.spark.sql.functions._
 import scala.math.sqrt
 import scala.collection.mutable.ListBuffer
 
-object NormalizeUser {
+object NormalizeSong {
   
   case class Triplet(userID: String, songID: String, playCount: Int)
   
-  case class FourTuple(userID: String, playCount: Int, occurCount: Int, mean:Double)
+  case class FourTuple(songID: String, playCount: Int, occurCount: Int, mean:Double)
   
   def parseTriplet(line: String): Triplet = {
     
@@ -47,31 +47,31 @@ object NormalizeUser {
       
     val pathUN = "/Users/ekrem/No-cloud/datasets4senior/echonest/subset/train_triplets_echonest.txt"
     
-    val pathUPM = "/Users/ekrem/No-cloud/datasets4senior/echonest/subset/echonest_user_play_mean.txt"
-    
-    val destination = "/Users/ekrem/No-cloud/datasets4senior/echonest/subset/echonest_uu_normalized_subset.txt"
+    val pathSPM = "/Users/ekrem/No-cloud/datasets4senior/echonest/subset/echonest_song_play_mean.txt"  
       
+    val destination = "/Users/ekrem/No-cloud/datasets4senior/echonest/subset/echonest_ii_normalized_subset.txt"
+    
     val unLines = spark.sparkContext.textFile(pathUN)
 
     val unTriplets = unLines.map(parseTriplet)
     
-    val upmLines = spark.sparkContext.textFile(pathUPM)
+    val spmLines = spark.sparkContext.textFile(pathSPM)
     
-    val upmTriplets = upmLines.map(parseFourTuple)
+    val spmTriplets = spmLines.map(parseFourTuple)
     
     import spark.implicits._
     val schemaUN = unTriplets.toDS
     schemaUN.createOrReplaceTempView("unTriplets")
     
     import spark.implicits._
-    val schemaUPM = upmTriplets.toDS
-    schemaUPM.createOrReplaceTempView("upmTriplets")
+    val schemaSPM = spmTriplets.toDS
+    schemaSPM.createOrReplaceTempView("spmTriplets")
     
-    val userMean = spark.sql("SELECT userID, mean FROM upmTriplets")
+    val songMean = spark.sql("SELECT songID, mean FROM spmTriplets")
     
     val triplets = spark.sql("SELECT * FROM unTriplets")
     
-    val joined = triplets.join(userMean, "userID")
+    val joined = triplets.join(songMean, "songID")
     
     val nTriplets = joined.withColumn("playCount", $"playCount" - $"mean").drop("mean")
     
@@ -89,7 +89,6 @@ object NormalizeUser {
 
   }
   
-  
   def writeToFile(result: Array[Row], path: String) = {
     
     val pw = new PrintWriter(new File(path))
@@ -99,25 +98,6 @@ object NormalizeUser {
         +row.get(2).toString()+"\n"))
     
     pw.close
-  }
-  
-  def pearsonCorr(r_u: Array[Row], r_v: Array[Row]): Double = {
-    
-    //Assuming the play counts are normalized
-    
-    var cov = 0.0
-    
-    var var_u = 0.0
-    
-    var var_v = 0.0
-    
-    r_u.foreach(row_u => r_v.foreach(row_v => cov += row_u.getDouble(0)*row_v.getDouble(0)))
-    
-    r_u.foreach(row_u => var_u += row_u.getDouble(0)*row_u.getDouble(0))
-    
-    r_v.foreach(row_v => var_v += row_v.getDouble(0)*row_v.getDouble(0))
-    
-    return cov/(sqrt(var_u)*sqrt(var_v))
   }
   
   def numOfDistinct(df: DataFrame, field: String): Long = {

@@ -33,7 +33,11 @@ object MeanPlayOfSong {
       .getOrCreate()
     
     //Read the file
-    val lines = spark.sparkContext.textFile("/Users/ekrem/No-cloud/datasets4senior/train_triplets_echonest.txt")
+    val source = "/Users/ekrem/No-cloud/datasets4senior/echonest/subset/train_triplets_echonest.txt"
+    
+    val destination = "/Users/ekrem/No-cloud/datasets4senior/echonest/subset/echonest_song_play_mean.txt"
+      
+    val lines = spark.sparkContext.textFile(source)
     
     //Map the lines
     val triplets = lines.map(parseLines)
@@ -53,7 +57,7 @@ object MeanPlayOfSong {
     
     val result = meanPlayForEachSong.collect()
     
-    val pw = new PrintWriter(new File("/Users/ekrem/No-cloud/datasets4senior/echonest_song_play_mean.txt"))
+    val pw = new PrintWriter(new File(destination))
     
     result.foreach(row=>pw.write(row.get(0).toString()+" "
         +row.get(1).toString()+" "
