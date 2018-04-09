@@ -166,8 +166,8 @@ def form_dictionaries(users_list, songs_list):
   return user_dict, song_dict
 
 ####################################################
-def train_MF(train_rdd, test_rdd, f=50, a=0.01):
-  model = ALS.trainImplicit(train_rdd, f, seed=10, alpha=a, iterations=10)
+def train_MF(train_rdd, test_rdd, f=20, a=0.01, l=0.01):
+  model = ALS.trainImplicit(train_rdd, f, seed=10, lambda_=l, alpha=a, iterations=10)
   result = model.predictAll(test_rdd)
   return result
 
@@ -227,72 +227,80 @@ def get_records(spark):
   return record_train, record_test
 ####################################################
 
+def result_MF(spark, record_train, record_test, f, a, l):
+  print("Creating rating tuples...")
 
-spark = SparkSession\
-    .builder\
-    .master("local[*]") \
-    .appName("main")\
-    .getOrCreate()  
+  sc = spark.sparkContext
+  
+  ratings_train = []
+  for i in range(record_train.shape[0]):
+    for j in range(record_train.shape[1]):
+      count = record_train[i,j]
+      rating = (i, j, count)
+      ratings_train.append(rating)
+        
+  ratings_test = []
+  ratings_eval = []
+  for i in range(record_test.shape[0]):
+    for j in range(record_test.shape[1]):
+      count = record_test[i,j]
+      if(count>0):
+        rating = (i, j)
+        evali = (i, j, 1)
+        ratings_test.append(rating)
+        ratings_eval.append(evali)
+        
+  print("Creating RDDs...")
+  
+  train_rdd = sc.parallelize(ratings_train)
+  test_rdd = sc.parallelize(ratings_test)
+  eval_rdd = sc.parallelize(ratings_eval)
 
-sc = spark.sparkContext
+  rap_result = train_evaluate_MF( train_rdd, test_rdd, eval_rdd, f, a, l)
+  
+  return rap_result;
+####################################################
 
-record_train, record_test = get_records(spark)
+def train_evaluate_MF(train_rdd, test_rdd, eval_rdd, f=20, a=0.01, l=0.01):
+  print("Training...")
+  
+  aa = train_MF(train_rdd, test_rdd, f, a, l)
+  
+  #r_x = np.asarray(aa.map(lambda r: r[2]).collect())
+  #r_min = np.min(r_x)
+  #r_max = np.max(r_x)
+  
+  #result = aa.map(lambda r: ((r[0], r[1]), int(((r[2]-r_min)/(r_max-r_min))>0.5)))
+  result = aa.map(lambda r: ((r[0], r[1]), r[2]))
+  print("Joining predicted and actual results...")
+  
+  ratesAndPreds = eval_rdd.map(lambda r: ((r[0], r[1]), r[2])).join(result)
+  rap_result = ratesAndPreds.collect()
+  
+  print("Evaluating results...")
+  
+  MSE = ratesAndPreds.map(lambda r: (r[1][0] - r[1][1])**2).mean()
+  
+  print("rank= "+str(f)+", alpha= "+str(a)+", lambda= "+str(l)+", MSE: "+str(MSE))
+  
+  return [f, a, l, MSE];
 
-#P = pref_matrix(record_train)
+####################################################
 
-#C = conf_matrix(record_train)
 
-print("Creating rating tuples...")
-
-ratings_train = []
-for i in range(record_train.shape[0]):
-  for j in range(record_train.shape[1]):
-    count = record_train[i,j]
-    rating = (i, j, count)
-    ratings_train.append(rating)
-      
-ratings_test = []
-ratings_eval = []
-for i in range(record_test.shape[0]):
-  for j in range(record_test.shape[1]):
-    count = record_test[i,j]
-    if(count>0):
-      rating = (i, j)
-      evali = (i, j, 1)
-      ratings_test.append(rating)
-      ratings_eval.append(evali)
-      
-print("Creating RDDs...")
-
-train_rdd = sc.parallelize(ratings_train)
-test_rdd = sc.parallelize(ratings_test)
-eval_rdd = sc.parallelize(ratings_eval)
-
-print("Training...")
-
-aa = train_MF(train_rdd, test_rdd, a=40.0)
-
-r_x = np.asarray(aa.map(lambda r: r[2]).collect())
-r_min = np.min(r_x)
-r_max = np.max(r_x)
-
-result = aa.map(lambda r: ((r[0], r[1]), int(((r[2]-r_min)/(r_max-r_min))>0.85)))
-print("Joining predicted and actual results...")
-
-ratesAndPreds = eval_rdd.map(lambda r: ((r[0], r[1]), r[2])).join(result)
-rap_result = ratesAndPreds.collect()
-
-print("Evaluating results...")
-
-MSE = ratesAndPreds.map(lambda r: (r[1][0] - r[1][1])**2).mean()
-
-cm = cm = np.zeros((2,2), dtype=np.int32)
-cm = evaluate_cm(rap_result)
-
-print("MSE: "+str(MSE))
-
-print("Stopping spark session...")  
-
-spark.stop()
-
-print("Stopped.") 
+parameters = {'a': [80.0, 160.0, 320.0], 'l': [0.01, 0.1, 1.0], 'f': [20]}
+results = []
+for f in parameters['f']:
+  for l in parameters['l']:
+    for a in parameters['a']:
+      spark = SparkSession\
+          .builder\
+          .master("local[*]") \
+          .appName("main")\
+          .getOrCreate()  
+      sc = spark.sparkContext
+      record_train, record_test = get_records(spark)
+      results.append(result_MF(spark, record_train, record_test, f, a, l))
+      print("Stopping spark session...")  
+      spark.stop()
+      print("Stopped.") 
