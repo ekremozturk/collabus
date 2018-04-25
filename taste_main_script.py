@@ -13,7 +13,8 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from pyspark.sql.functions import *
-from pyspark.mllib.recommendation import *
+from pyspark.mllib.recommendation import ALS
+from math import log10, sqrt
 
 ######################################################
 def read_four_tuple(spark, path):
@@ -115,6 +116,7 @@ def get_subsets(spark):
   return read_triplet(spark, path_train), read_triplet(spark, path_test)
 
 ######################################################
+
 def record_matrix(train_list, user_dict, song_dict): 
       
   record = np.zeros((len(user_dict), len(song_dict) ), dtype=np.int32)
@@ -128,6 +130,7 @@ def record_matrix(train_list, user_dict, song_dict):
   return record
 
 ######################################################
+
 def pref_matrix(record):
   P = np.zeros((record.shape[0], record.shape[1] ), dtype=np.int32)
   
@@ -139,6 +142,7 @@ def pref_matrix(record):
   return P
 
 ######################################################
+
 def conf_matrix(record):
   C = np.zeros((record.shape[0], record.shape[1] ), dtype=np.int32)
   alpha = 40
@@ -149,6 +153,7 @@ def conf_matrix(record):
   return C
 
 ####################################################
+
 def form_dictionaries(users_list, songs_list):
   song_dict = dict()
   user_dict = dict()
@@ -166,30 +171,17 @@ def form_dictionaries(users_list, songs_list):
   return user_dict, song_dict
 
 ####################################################
+
 def train_MF(train_rdd, test_rdd, f=20, a=0.01, l=0.01):
   model = ALS.trainImplicit(train_rdd, f, seed=10, lambda_=l, alpha=a, iterations=10)
   result = model.predictAll(test_rdd)
   return result
 
 ####################################################
-def evaluate_cm(rap_result):
-  cm = np.zeros((2,2), dtype=np.int32)
-
-  for r in rap_result:
-    if r[1][0]==0 and r[1][1] == 0:
-      cm[0,0] = cm[0,0]+1
-    elif r[1][0]==0 and r[1][1] == 1:
-      cm[0,1] = cm[0,1]+1
-    elif r[1][0]==1 and r[1][1] == 0:
-      cm[1,0] = cm[1,0]+1
-    else:
-      cm[1,1] = cm[1,1]+1
-      
-  return cm
-####################################################
   
 def get_records(spark):
-  path_triplets = "subset/train_triplets_echonest.txt"
+  
+  #path_triplets = "subset/train_triplets_echonest.txt"
 
   path_songs = "subset/echonest_song_play_mean.txt"
      
@@ -197,7 +189,7 @@ def get_records(spark):
   
   print("Loading triplets...")
   
-  triplets_DF = read_triplet(spark, path_triplets)
+  #triplets_DF = read_triplet(spark, path_triplets)
   
   songs_DF = read_four_tuple(spark, path_songs)
   
@@ -256,7 +248,7 @@ def result_MF(spark, record_train, record_test, f, a, l):
   test_rdd = sc.parallelize(ratings_test)
   eval_rdd = sc.parallelize(ratings_eval)
 
-  rap_result = train_evaluate_MF( train_rdd, test_rdd, eval_rdd, f, a, l)
+  rap_result = train_evaluate_MF(train_rdd, test_rdd, eval_rdd, f, a, l)
   
   return rap_result;
 ####################################################
@@ -266,11 +258,6 @@ def train_evaluate_MF(train_rdd, test_rdd, eval_rdd, f=20, a=0.01, l=0.01):
   
   aa = train_MF(train_rdd, test_rdd, f, a, l)
   
-  #r_x = np.asarray(aa.map(lambda r: r[2]).collect())
-  #r_min = np.min(r_x)
-  #r_max = np.max(r_x)
-  
-  #result = aa.map(lambda r: ((r[0], r[1]), int(((r[2]-r_min)/(r_max-r_min))>0.5)))
   result = aa.map(lambda r: ((r[0], r[1]), r[2]))
   print("Joining predicted and actual results...")
   
@@ -281,26 +268,34 @@ def train_evaluate_MF(train_rdd, test_rdd, eval_rdd, f=20, a=0.01, l=0.01):
   
   MSE = ratesAndPreds.map(lambda r: (r[1][0] - r[1][1])**2).mean()
   
-  print("rank= "+str(f)+", alpha= "+str(a)+", lambda= "+str(l)+", MSE: "+str(MSE))
+  RMSE = sqrt(MSE)
   
-  return [f, a, l, MSE];
+  print("rank= "+str(f)+", alpha= "+str(a)+", lambda= "+str(l)+", RMSE: "+str(RMSE))
+  
+  return RMSE, rap_result;
 
 ####################################################
 
+def main():
+  results = []
+  
+  spark = SparkSession\
+      .builder\
+      .master("local[*]") \
+      .appName("main")\
+      .getOrCreate()  
+      
+  sc = spark.sparkContext
+  
+  record_train, record_test = get_records(spark)
+  
+  RMSE, result = result_MF(spark, record_train, record_test, 50, 8000.0, 200.0)
+  
+  print("Stopping spark session...")  
+  
+  spark.stop()
+  
+  print("Stopped.") 
 
-parameters = {'a': [80.0, 160.0, 320.0], 'l': [0.01, 0.1, 1.0], 'f': [20]}
-results = []
-for f in parameters['f']:
-  for l in parameters['l']:
-    for a in parameters['a']:
-      spark = SparkSession\
-          .builder\
-          .master("local[*]") \
-          .appName("main")\
-          .getOrCreate()  
-      sc = spark.sparkContext
-      record_train, record_test = get_records(spark)
-      results.append(result_MF(spark, record_train, record_test, f, a, l))
-      print("Stopping spark session...")  
-      spark.stop()
-      print("Stopped.") 
+#main()
+
