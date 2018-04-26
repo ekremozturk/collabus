@@ -9,7 +9,9 @@ Created on Wed Apr 25 11:23:24 2018
 import numpy as np
 import pandas as pd
 import taste_main_script as fn
-from math import log
+
+from math import log, exp
+from numpy.linalg import norm
 
 triplets = pd.read_table('subset/train_triplets_echonest.txt',
                          sep=' ',
@@ -51,7 +53,7 @@ def form_dictionaries(userIDs, songIDs):
 user_dict, song_dict = form_dictionaries(userIDs, songIDs)
 
 ##############################################################
-def kNN_build(triplets, userIDs, songIDs):
+def kNN_form(triplets, userIDs, songIDs):
 
   #Countların logaritması güzel normalization oluyormuş
   #1 countların logaritması 0 çıkacağı ve çarpımlarda sorun olacağı için için 1 ekledim
@@ -75,10 +77,10 @@ def kNN_build(triplets, userIDs, songIDs):
   return R, M
 ##############################################################
 
-R, M = kNN_build(triplets, userIDs, songIDs)
+R, M = kNN_form(triplets, userIDs, songIDs)
 
-def similarItems(ID ,M, k):
-  song_idx = song_dict[ID]
+def similar_items(songID ,M, k):
+  song_idx = song_dict[songID]
   song_array = M[song_idx,:]
   song_tuples = []
   for song_sim,song_id in zip(song_array,songIDs):
@@ -87,4 +89,43 @@ def similarItems(ID ,M, k):
   song_tuples = sorted(song_tuples, key=lambda x: x[0], reverse=True)
   return song_tuples[1:k+1]
 
-tuples = similarItems('SOAAFYH12A8C13717A', M, 30)
+tuples = similar_items('SOAAFYH12A8C13717A', M, 30) 
+
+def u_pred_i(userID, songID, M, k):
+  sim_items = similar_items(songID, M, k)
+  user_idx = user_dict[userID]
+  sum_pred = 0
+  w_i = []
+  for item in sim_items:
+    id_ij = item[1]
+    w_ij = item[0]
+    w_i.append(w_ij)
+    idx_ij = song_dict[id_ij]
+    r_uj = R[user_idx, idx_ij]
+    sum_pred += w_ij*r_uj
+  
+  return sum_pred/norm(w_i)
+
+def form_predictions(userID):
+  R_pred = R
+  
+k = exp(u_pred_i('00106661302d2251d8bb661c91850caa65096457', 'SOCDDDO12AC4689F56', M, 30)-1)  
+  
+
+#seha
+# Precision metric kesin, daha sonra mean average precision
+# Başka metric varsa onlar da
+# Muhtemelen hepsi scikit gibi librarylerde vardır
+
+#ekrem
+# Diğer scriptteki fonksiyonlar pandas dataframelere göre temize çekilecek
+# Pandas to pyspark dataframe çevirisi MF için yapılacak ve MF yapılacak daha temiz
+# MF parametrelerini ayarlamak için cross validation
+
+#herkes
+# Evaluation için de cross validation
+# gridsearchcv 
+  
+  
+  
+  
