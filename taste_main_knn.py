@@ -77,5 +77,14 @@ def kNN_build(triplets, userIDs, songIDs):
 
 R, M = kNN_build(triplets, userIDs, songIDs)
 
+def similarItems(ID ,M, k):
+  song_idx = song_dict[ID]
+  song_array = M[song_idx,:]
+  song_tuples = []
+  for song_sim,song_id in zip(song_array,songIDs):
+    if(song_sim != 0):
+      song_tuples.append((song_sim, song_id))
+  song_tuples = sorted(song_tuples, key=lambda x: x[0], reverse=True)
+  return song_tuples[1:k+1]
 
-
+tuples = similarItems('SOAAFYH12A8C13717A', M, 30)
