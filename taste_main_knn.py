@@ -90,8 +90,6 @@ def similar_items(songID ,M, k):
     song_tuples.append((song_sim, songIDs[indexes[idx]])) 
   return song_tuples
 
-tuples = similar_items('SOAAFYH12A8C13717A', M, 30)
-
 def u_pred_i(userID, songID, M, k):
   sim_items = similar_items(songID, M, k)
   user_idx = user_dict[userID]
@@ -122,10 +120,6 @@ def form_user_prediction(userID, k):
     user_pred.append(r_pred)
   return user_pred
 
-
-#kdg = form_user_prediction('00106661302d2251d8bb661c91850caa65096457', 30)
-
-
 def form_R_pred(k):
   R_pred = []
   for uid in userIDs:
@@ -137,14 +131,18 @@ def form_R_pred(k):
 def recommend_user(userID, n):
   user_pred = pd.Series(form_user_prediction(userID, 30)).sort_values(ascending=False)[0:n]
   indexes = user_pred.index.values
-  rec = []
-  for idx, lc in enumerate(user_pred):
-    rec.append((lc, songIDs[indexes[idx]]))
-  return rec
+  return songIDs[indexes]
+
+def rec_every_user(n):
+  recommendations = []
+  for _id in userIDs:
+    recommendations.append(recommend_user(_id, n))
+  return pd.DataFrame(data = recommendations, index=userIDs, columns=np.arange(n))  
 
 start_time = time()
-ggg = recommend_user('00106661302d2251d8bb661c91850caa65096457', 20)
+recommendations = rec_every_user(20)
 elapsed_time = time()-start_time
+
 
 # PANDAS SORTING AND RANKING
 
