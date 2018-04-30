@@ -7,6 +7,7 @@ Created on Wed Apr 25 11:23:24 2018
 """
 
 import numpy as np
+from pandas import Series
 import pandas as pd
 import taste_main_script as fn
 from time import time
@@ -82,15 +83,14 @@ R, M = kNN_form(triplets, userIDs, songIDs)
 
 def similar_items(songID ,M, k):
   song_idx = song_dict[songID]
-  song_array = M[song_idx,:]
+  song_array = pd.Series(M[song_idx,:]).sort_values(ascending=False)[1:k+1]
+  indexes = song_array.index.values
   song_tuples = []
-  for song_sim,song_id in zip(song_array,songIDs):
-    if(song_sim != 0):
-      song_tuples.append((song_sim, song_id))
-  song_tuples = sorted(song_tuples, key=lambda x: x[0], reverse=True)
-  return song_tuples[1:k+1]
+  for idx, song_sim in enumerate(song_array):
+    song_tuples.append((song_sim, songIDs[indexes[idx]])) 
+  return song_tuples
 
-tuples = similar_items('SOAAFYH12A8C13717A', M, 30) 
+tuples = similar_items('SOAAFYH12A8C13717A', M, 30)
 
 def u_pred_i(userID, songID, M, k):
   sim_items = similar_items(songID, M, k)
@@ -104,7 +104,7 @@ def u_pred_i(userID, songID, M, k):
     idx_ij = song_dict[id_ij]
     r_uj = R[user_idx, idx_ij]
     sum_pred += w_ij*r_uj
-  
+
   return sum_pred/norm(w_i)
 
 R_pred = np.zeros((userIDs.size, songIDs.size))
@@ -122,7 +122,7 @@ def form_user_prediction(userID, k):
     user_pred.append(r_pred)
   return user_pred
 
- 
+
 #kdg = form_user_prediction('00106661302d2251d8bb661c91850caa65096457', 30)
 
 
@@ -133,19 +133,21 @@ def form_R_pred(k):
     R_pred.append(preds)
     print(preds)
   return R_pred
-    
-def recommend_user(userID, n):
-  user_pred = form_user_prediction(userID, 30)
-  rec = []
-  for lc, song_id in zip(user_pred, songIDs):
-    if(lc != 0):
-      rec.append((lc, song_id))
-  rec = sorted(rec, key=lambda x: x[0], reverse=True)
-  return rec[0:n]
 
-start_time = time() 
+def recommend_user(userID, n):
+  user_pred = pd.Series(form_user_prediction(userID, 30)).sort_values(ascending=False)[0:n]
+  indexes = user_pred.index.values
+  rec = []
+  for idx, lc in enumerate(user_pred):
+    rec.append((lc, songIDs[indexes[idx]]))
+  return rec
+
+start_time = time()
 ggg = recommend_user('00106661302d2251d8bb661c91850caa65096457', 20)
 elapsed_time = time()-start_time
+
+# PANDAS SORTING AND RANKING
+
 #seha
 # Precision metric kesin, daha sonra mean average precision
 # Başka metric varsa onlar da
@@ -158,8 +160,7 @@ elapsed_time = time()-start_time
 
 #herkes
 # Evaluation için de cross validation
-# gridsearchcv 
+# gridsearchcv
 # msd h5 summary
-  
-  
-  
+
+
