@@ -8,6 +8,7 @@ Created on Tue May  1 17:12:17 2018
 import numpy as np
 import pandas as pd
 from math import log
+from collections import defaultdict
 
 def load_files():
   triplets = pd.read_table('subset/train_triplets_echonest.txt',
@@ -97,8 +98,29 @@ def get_subsets():
   return train_triplets, test_triplets
   
   
-  
-  
+def extract_recommendations(recommendations):
+    rec = defaultdict(list)
+    for row in recommendations:
+        user_no = row.user
+        for recommend in row.recommendations:
+            rec[user_no].append(recommend.item)
+    return rec
+
+def extract_evaluations(ratings_eval):
+    eval_dict = defaultdict(list)
+    for row in ratings_eval:
+        eval_dict[row[0]].append(row[1])
+    return eval_dict
+
+def prepare_prediction_label(recommendations, ratings):
+    recommend_ext = extract_recommendations(recommendations)
+    rating_ext = extract_evaluations(ratings)
+    tuples = []
+    for song, recommend in recommend_ext.items():
+        tuples.append((recommend,rating_ext[song]))
+    return tuples
+    
+    
   
   
   
