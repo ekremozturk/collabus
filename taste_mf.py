@@ -23,6 +23,14 @@ userIDs, songIDs = fn.ids(users, songs)
 
 user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
 
+userGroups = fn.group_users(userIDs ,12)
+
+train_groups, test_groups = fn.form_groups(userGroups, train_DF, test_DF)
+
+virtual_training = fn.form_virtual_users(train_groups, song_dict)
+
+virtual_test = fn.form_virtual_users(test_groups, song_dict)
+
 ##############################################################################
 
 def get_records():
@@ -54,9 +62,30 @@ def to_spark_df(spark, ratings_train, ratings_eval):
 
 ##############################################################################
 
-def form_tuples(record_train, record_test):
+def form_tuples(record_train, record_test, virtual=False):
 
   print("Creating rating tuples...")
+  
+  if virtual:
+    ratings_train = []
+    for i in range(record_train.shape[0]):
+      for j in range(record_train.shape[1]):
+        count = float(record_train.iloc[i,j])
+        rating = (i, j, count)
+        ratings_train.append(rating)
+  
+    ratings_test = []
+    ratings_eval = []
+    for i in range(record_test.shape[0]):
+      for j in range(record_test.shape[1]):
+        count = record_test.iloc[i,j]
+        if(count>0):
+          rating = (i, j)
+          evali = (i, j, 1.0)
+          ratings_test.append(rating)
+          ratings_eval.append(evali)
+  
+    return ratings_train, ratings_eval
 
   ratings_train = []
   for i in range(record_train.shape[0]):
@@ -76,7 +105,7 @@ def form_tuples(record_train, record_test):
         ratings_test.append(rating)
         ratings_eval.append(evali)
 
-  return ratings_train, ratings_eval;
+  return ratings_train, ratings_eval
 
 ##############################################################################
 
@@ -119,9 +148,11 @@ def train(data, rank=50, maxIter=10, regParam=0.01, implicitPrefs=True, alpha=40
 ##############################################################################
 start_time = time()
 
-record_train, record_test = get_records()
+#record_train, record_test = get_records()
 
-ratings_train, ratings_eval = form_tuples(record_train, record_test)
+#ratings_train, ratings_eval = form_tuples(record_train, record_test)
+
+ratings_train, ratings_eval = form_tuples(virtual_training, virtual_test, virtual=True)
 
 spark = SparkSession\
     .builder\
@@ -135,7 +166,7 @@ ratings_train, ratings_eval = to_spark_df(spark, ratings_train, ratings_eval)
 
 #tuning_model = tune(ratings_train)
 
-ALSmodel, model = train(ratings_train)
+ALSmodel, model = train(ratings_train, regParam=200.0, alpha=8000.0)
 #model.save("subset/als")
 
 #model = ALSModel.load("subset/als")
@@ -146,7 +177,7 @@ evaluator = RegressionEvaluator(metricName="rmse", labelCol="rating" ,prediction
 
 rmse = evaluator.evaluate(predictions)
 
-recommendations = model.recommendForAllUsers(20).collect()
+#recommendations = model.recommendForAllUsers(20).collect()
 
 print("Stopping spark session...")
 
@@ -157,3 +188,4 @@ print("Stopped.")
 
 #Recommendation'ları userID, songIDs olacak şekilde daha güzel bir hale getir
 #Üstteki tamamlanınca ranking metrics implementation
+#Group recommendation
