@@ -11,6 +11,7 @@ from pyspark.sql.types import StructType, StructField, IntegerType, FloatType
 from pyspark.ml.recommendation import ALS, ALSModel
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
 from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.mllib.evaluation import RankingMetrics
 from time import time
 
 import taste_fn as fn
@@ -162,7 +163,7 @@ spark = SparkSession\
 
 sc = spark.sparkContext
 
-ratings_train, ratings_eval = to_spark_df(spark, ratings_train, ratings_eval)
+ratings_train, _ = to_spark_df(spark, ratings_train, ratings_eval)
 
 #tuning_model = tune(ratings_train)
 
@@ -171,13 +172,20 @@ ALSmodel, model = train(ratings_train, regParam=200.0, alpha=8000.0)
 
 #model = ALSModel.load("subset/als")
 
-predictions = model.transform(ratings_eval)
+# predictions = model.transform(ratings_eval)
 
-evaluator = RegressionEvaluator(metricName="rmse", labelCol="rating" ,predictionCol="prediction")
+# evaluator = RegressionEvaluator(metricName="rmse", labelCol="rating" ,predictionCol="prediction")
 
-rmse = evaluator.evaluate(predictions)
+# rmse = evaluator.evaluate(predictions)
 
-#recommendations = model.recommendForAllUsers(20).collect()
+print("Making recommendations...")
+recommendations = model.recommendForAllUsers(20).collect()
+
+print("Preparing for metrics...")
+pred_label = fn.prepare_prediction_label(recommendations,ratings_eval)
+prediction_and_labels = sc.parallelize(pred_label)
+metrics = RankingMetrics(prediction_and_labels)
+mean_avg_prec= metrics.meanAveragePrecision
 
 print("Stopping spark session...")
 
