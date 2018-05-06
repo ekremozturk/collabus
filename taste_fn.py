@@ -163,6 +163,7 @@ def agg_fn(agg, item):
   if(agg=='average'):
     return item.mean()
   if(agg=='normalized_avg'):
+    item = item+1
     item = item.apply(log)+1
     return exp(item.mean())
 

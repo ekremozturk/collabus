@@ -16,6 +16,8 @@ from time import time
 
 import taste_fn as fn
 
+start_time = time()
+
 triplets, users, songs = fn.load_files()
 
 train_DF, test_DF = fn.get_subsets()
@@ -28,9 +30,9 @@ userGroups = fn.group_users(userIDs ,12)
 
 train_groups, test_groups = fn.form_groups(userGroups, train_DF, test_DF)
 
-virtual_training = fn.form_virtual_users(train_groups, song_dict)
+virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='normalized_avg')
 
-virtual_test = fn.form_virtual_users(test_groups, song_dict)
+virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='normalized_avg')
 
 ##############################################################################
 
@@ -136,18 +138,17 @@ def train(data, rank=50, maxIter=10, regParam=0.01, implicitPrefs=True, alpha=40
 
   print("Training the model...")
 
-  ALSmodel = ALS(rank=rank,
+  ALES = ALS(rank=rank,
               maxIter=maxIter,
               regParam=regParam,
               implicitPrefs=implicitPrefs,
               alpha=alpha)
 
-  model = ALSmodel.fit(data)
+  model = ALES.fit(data)
 
-  return ALSmodel, model
+  return ALES, model
 
 ##############################################################################
-start_time = time()
 
 #record_train, record_test = get_records()
 
@@ -167,19 +168,19 @@ ratings_train, _ = to_spark_df(spark, ratings_train, ratings_eval)
 
 #tuning_model = tune(ratings_train)
 
-ALSmodel, model = train(ratings_train, regParam=200.0, alpha=8000.0)
+als, model = train(ratings_train)
 #model.save("subset/als")
 
 #model = ALSModel.load("subset/als")
 
-# predictions = model.transform(ratings_eval)
+#predictions = model.transform(ratings_eval)
 
-# evaluator = RegressionEvaluator(metricName="rmse", labelCol="rating" ,predictionCol="prediction")
+#evaluator = RegressionEvaluator(metricName="rmse", labelCol="rating" ,predictionCol="prediction")
 
-# rmse = evaluator.evaluate(predictions)
+#rmse = evaluator.evaluate(predictions)
 
 print("Making recommendations...")
-recommendations = model.recommendForAllUsers(20).collect()
+recommendations = model.recommendForAllUsers(500).collect()
 
 print("Preparing for metrics...")
 pred_label = fn.prepare_prediction_label(recommendations,ratings_eval)
