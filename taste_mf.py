@@ -65,53 +65,6 @@ def to_spark_df(spark, ratings_train, ratings_eval):
 
 ##############################################################################
 
-def form_tuples(record_train, record_test, virtual=False):
-
-  print("Creating rating tuples...")
-  
-  if virtual:
-    ratings_train = []
-    for i in range(record_train.shape[0]):
-      for j in range(record_train.shape[1]):
-        count = float(record_train.iloc[i,j])
-        rating = (i, j, count)
-        ratings_train.append(rating)
-  
-    ratings_test = []
-    ratings_eval = []
-    for i in range(record_test.shape[0]):
-      for j in range(record_test.shape[1]):
-        count = record_test.iloc[i,j]
-        if(count>0):
-          rating = (i, j)
-          evali = (i, j, 1.0)
-          ratings_test.append(rating)
-          ratings_eval.append(evali)
-  
-    return ratings_train, ratings_eval
-
-  ratings_train = []
-  for i in range(record_train.shape[0]):
-    for j in range(record_train.shape[1]):
-      count = float(record_train[i,j])
-      rating = (i, j, count)
-      ratings_train.append(rating)
-
-  ratings_test = []
-  ratings_eval = []
-  for i in range(record_test.shape[0]):
-    for j in range(record_test.shape[1]):
-      count = record_test[i,j]
-      if(count>0):
-        rating = (i, j)
-        evali = (i, j, 1.0)
-        ratings_test.append(rating)
-        ratings_eval.append(evali)
-
-  return ratings_train, ratings_eval
-
-##############################################################################
-
 def tune(ratings_train):
 
   print("Tuning...")
@@ -150,11 +103,11 @@ def train(data, rank=50, maxIter=10, regParam=0.01, implicitPrefs=True, alpha=40
 
 ##############################################################################
 
-#record_train, record_test = get_records()
+record_train, record_test = get_records()
 
-#ratings_train, ratings_eval = form_tuples(record_train, record_test)
+ratings_train, ratings_eval = fn.form_tuples(record_train, record_test)
 
-ratings_train, ratings_eval = form_tuples(virtual_training, virtual_test, virtual=True)
+#ratings_train, ratings_eval = form_tuples(virtual_training, virtual_test, virtual=True)
 
 spark = SparkSession\
     .builder\

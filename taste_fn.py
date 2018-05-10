@@ -93,7 +93,54 @@ def form_records(triplets, user_dict, song_dict, normalization = False):
       
     return R
   
-##############################################################################  
+##############################################################################
+    
+def form_tuples(record_train, record_test, virtual=False):
+
+  print("Creating rating tuples...")
+  
+  if virtual:
+    ratings_train = []
+    for i in range(record_train.shape[0]):
+      for j in range(record_train.shape[1]):
+        count = float(record_train.iloc[i,j])
+        rating = (i, j, count)
+        ratings_train.append(rating)
+  
+    ratings_test = []
+    ratings_eval = []
+    for i in range(record_test.shape[0]):
+      for j in range(record_test.shape[1]):
+        count = record_test.iloc[i,j]
+        if(count>0):
+          rating = (i, j)
+          evali = (i, j, 1.0)
+          ratings_test.append(rating)
+          ratings_eval.append(evali)
+  
+    return ratings_train, ratings_eval
+
+  ratings_train = []
+  for i in range(record_train.shape[0]):
+    for j in range(record_train.shape[1]):
+      count = float(record_train[i,j])
+      rating = (i, j, count)
+      ratings_train.append(rating)
+
+  ratings_test = []
+  ratings_eval = []
+  for i in range(record_test.shape[0]):
+    for j in range(record_test.shape[1]):
+      count = record_test[i,j]
+      if(count>0):
+        rating = (i, j)
+        evali = (i, j, 1.0)
+        ratings_test.append(rating)
+        ratings_eval.append(evali)
+
+  return ratings_train, ratings_eval
+
+##############################################################################
   
 def get_subsets():
   
@@ -111,13 +158,24 @@ def get_subsets():
   
 ##############################################################################
   
-def extract_recommendations(recommendations):
-    rec = defaultdict(list)
-    for row in recommendations:
-        user_no = row.user
-        for recommend in row.recommendations:
-            rec[user_no].append(recommend.item)
+def extract_recommendations(recommendations, knn=False):
+  rec = defaultdict(list)
+  
+  if knn:
+    index = 0
+    for idx, user in recommendations.iterrows():
+      list_of_songs = list(user)
+      for song in list_of_songs:
+        rec[index].append(song)
+      index += 1
     return rec
+
+  for row in recommendations:
+      user_no = row.user
+      for recommend in row.recommendations:
+          rec[user_no].append(recommend.item)
+            
+
 
 def extract_evaluations(ratings_eval):
     eval_dict = defaultdict(list)
@@ -125,15 +183,23 @@ def extract_evaluations(ratings_eval):
         eval_dict[row[0]].append(row[1])
     return eval_dict
 
-def prepare_prediction_label(recommendations, ratings):
-    recommend_ext = extract_recommendations(recommendations)
-    rating_ext = extract_evaluations(ratings)
-    tuples = []
-    for song, recommend in recommend_ext.items():
-        tuples.append((recommend,rating_ext[song]))
-    return tuples
+def prepare_prediction_label(recommendations, ratings, knn):
     
+  if knn:
+      tuples = []
+      for song, recommend in recommendations.items():
+          tuples.append((recommend,ratings[song]))
+      return tuples
     
+  recommend_ext = extract_recommendations(recommendations)
+  rating_ext = extract_evaluations(ratings)
+  tuples = []
+  for song, recommend in recommend_ext.items():
+      tuples.append((recommend,rating_ext[song]))
+  return tuples
+    
+##############################################################################
+
 def group_users(userIDs, g_size):
   
   np.random.shuffle(userIDs)
@@ -198,4 +264,25 @@ def form_virtual_users(groups, song_dict, agg = 'average'):
   song_idx_cols = pd.Series([song_dict[x] for x in virtual_users.columns.values], index = virtual_users.columns.values)
   
   return virtual_users.rename(columns=song_idx_cols)      
+  
+##############################################################################
+  
+def extract_most_pop(songs, n):
+  
+  by_tot_play= songs.sort_values('totalPlay', ascending=False).iloc[:n].index.values
+  by_occurence= songs.sort_values('occurence', ascending=False).iloc[:n].index.values
+  by_mean= songs.sort_values('mean', ascending=False).iloc[:n].index.values
+  
+  return by_tot_play, by_occurence, by_mean
+  
+def rec_most_pop(userIDs, songs,  by = 'occ', n=20):
+  
+  totPlay, occ, mean = extract_most_pop(songs, n)
+  
+  if by == 'tot':
+    return pd.DataFrame(np.full((len(userIDs), n), totPlay, dtype=int), index=userIDs)
+  elif by == 'occ':
+    return pd.DataFrame(np.full((len(userIDs), n), occ, dtype=int), index=userIDs)
+  elif by == 'mean':
+    return pd.DataFrame(np.full((len(userIDs), n), mean, dtype=int), index=userIDs)
   
