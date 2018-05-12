@@ -57,11 +57,15 @@ def form_dictionaries(userIDs, songIDs):
 
 ##############################################################################
 
-def split_into_train_test(df, frac=0.8):
-  train = df.groupby("userID", group_keys=False).apply(lambda df: df.sample(frac=frac))
-  test = df.drop(train.index)
-  return train, test
-
+def split_into_train_test(df, cv =5):
+    subset_list = list()
+    for i in range(cv):
+        remain = df.groupby("userID", group_keys=False).apply(lambda df: df.sample(frac=1/(cv-i)))
+        df = df.drop(remain.index)
+        subset_list.append(remain)
+  #train = df.groupby("userID", group_keys=False).apply(lambda df: df.sample(frac=1/cv))
+  #test = df.drop(train.index)
+    return subset_list
 ##############################################################################
 
 def form_records(triplets, user_dict, song_dict, normalization = False):

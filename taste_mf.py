@@ -4,7 +4,7 @@
 Created on Wed Mar 28 20:07:13 2018
 
 @author: ekrem
-"""
+    """
 
 from pyspark.sql import SparkSession
 from pyspark.mllib.evaluation import RankingMetrics
@@ -22,7 +22,14 @@ userIDs, songIDs = fn.ids(users, songs)
 
 user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
 
-train_DF, test_DF = fn.split_into_train_test(triplets)
+#lis = fn.split_into_train_test(triplets)
+subsets = fn.split_into_train_test(triplets)
+
+test_DF = subsets[3]
+train_DF = pd.concat([element for i, element in enumerate(subsets) if i not in {3}])
+
+#train_DF, test_DF = fn.split_into_train_test(triplets)
+
 
 #train_DF, test_DF = fn.replace_DF(train_DF, test_DF, user_dict, song_dict)
 
