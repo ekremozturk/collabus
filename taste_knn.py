@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from time import time
 import taste_fn as fn
+import song_details as sd
 
 triplets, users, songs = fn.load_files()
 
