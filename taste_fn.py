@@ -13,17 +13,17 @@ from math import log, exp
 ##############################################################################
 
 def load_files():
-  triplets = pd.read_table('subset/train_triplets_echonest.txt',
+  triplets = pd.read_table('subset/train_triplets.txt',
                          sep=' ',
                          header=None,
                          names=['userID','itemID','playCount'])
 
-  users = pd.read_table('subset/echonest_user_play_mean.txt',
+  users = pd.read_table('subset/user_play_mean.txt',
                          sep=' ',
                          header=None,
                          names=['ID','totalPlay','occurence', 'mean'])
 
-  songs = pd.read_table('subset/echonest_song_play_mean.txt',
+  songs = pd.read_table('subset/song_play_mean.txt',
                          sep=' ',
                          header=None,
                          names=['ID','totalPlay','occurence', 'mean'])
@@ -31,7 +31,7 @@ def load_files():
   return triplets, users, songs
 
 ##############################################################################
-
+  
 def ids(users, songs):
   userIDs = np.asarray(users['ID'])
   songIDs = np.asarray(songs['ID'])
@@ -77,6 +77,7 @@ def form_records(triplets, user_dict, song_dict, normalization = False):
       user_idx = user_dict[t[0,0]]
       song_idx = song_dict[t[0,1]]
       R[user_idx, song_idx] = logged_count
+      #R[t[0,0], t[0,1]] = logged_count
   
     #Form item-item similarity matrix
     from sklearn.metrics.pairwise import cosine_similarity
@@ -85,17 +86,26 @@ def form_records(triplets, user_dict, song_dict, normalization = False):
     return R, M
   
   else:
-    
     for t in triplets.values:
       user_idx = user_dict[t[0]]
       song_idx = song_dict[t[1]]
       R[user_idx, song_idx] = t[2]
       
     return R
+
+##############################################################################
+
+def replace_DF(train_DF, test_DF, user_dict, song_dict):
+  train_DF = train_DF.replace(user_dict)
+  train_DF = train_DF.replace(song_dict)
+  test_DF = test_DF.replace(user_dict)
+  test_DF = test_DF.replace(song_dict)
   
+  return train_DF, test_DF
+
 ##############################################################################
     
-def form_tuples(record_train, record_test, virtual=False):
+def form_tuples(record_train, record_test, virtual=False, knn=False):
 
   print("Creating rating tuples...")
   
@@ -121,11 +131,13 @@ def form_tuples(record_train, record_test, virtual=False):
     return ratings_train, ratings_eval
 
   ratings_train = []
-  for i in range(record_train.shape[0]):
-    for j in range(record_train.shape[1]):
-      count = float(record_train[i,j])
-      rating = (i, j, count)
-      ratings_train.append(rating)
+  if knn==False:
+    for i in range(record_train.shape[0]):
+      for j in range(record_train.shape[1]):
+        count = float(record_train[i,j])
+        if count>0:
+          rating = (i, j, count)
+          ratings_train.append(rating)
 
   ratings_test = []
   ratings_eval = []
@@ -142,7 +154,7 @@ def form_tuples(record_train, record_test, virtual=False):
 
 ##############################################################################
   
-def get_subsets():
+def load_subsets():
   
   train_triplets = pd.read_table('subset/train_triplets.txt',
                          sep=' ',
@@ -171,11 +183,11 @@ def extract_recommendations(recommendations, knn=False):
     return rec
 
   for row in recommendations:
-      user_no = row.user
-      for recommend in row.recommendations:
-          rec[user_no].append(recommend.item)
-            
-
+    user_no = row[0]
+    for recommend in row[1]:
+      rec[user_no].append(recommend.product)
+              
+  return rec
 
 def extract_evaluations(ratings_eval):
     eval_dict = defaultdict(list)
@@ -183,7 +195,7 @@ def extract_evaluations(ratings_eval):
         eval_dict[row[0]].append(row[1])
     return eval_dict
 
-def prepare_prediction_label(recommendations, ratings, knn):
+def prepare_prediction_label(recommendations, ratings, knn=False):
     
   if knn:
       tuples = []

@@ -13,17 +13,21 @@ import taste_fn as fn
 
 triplets, users, songs = fn.load_files()
 
-train_DF, test_DF = fn.get_subsets()
-
 #only ids
 userIDs, songIDs = fn.ids(users, songs)
 
 #dictionaries
 user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
 
+train_DF, test_DF = fn.split_into_train_test(triplets)
+
+start_time = time()
+#train_DF, test_DF = fn.replace_DF(train_DF, test_DF, user_dict, song_dict)
+
 #record and similarity matrices
 R, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
 R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = True)
+elapsed_time = time()-start_time
 
 def similar_items(songID, k=30):
   song_idx = song_dict[songID]
@@ -40,7 +44,7 @@ def k_similar_items(k=30):
     k_sim_songs.append(similar_items(song, k))
   return k_sim_songs
 
-K = np.asarray(k_similar_items(k=30))
+K = np.asarray(k_similar_items(k=500))
 
 def u_pred_i(userID, songID, k=30):
   sim_items = K[song_dict[songID]]
@@ -50,7 +54,6 @@ def u_pred_i(userID, songID, k=30):
   R_user = R[user_idx, sim_idx].astype(float)
   
   return (sim_ratio*R_user).sum()/sim_ratio.sum()
-
 
 def form_user_prediction(userID, k=30):
   user_idx = user_dict[userID]
@@ -73,7 +76,7 @@ def form_R_pred(k):
   return pd.DataFrame(data = R_pred)
 
 def recommend_user(userID, n=20):
-  user_pred = pd.Series(form_user_prediction(userID, 30)).sort_values(ascending=False)[0:n]
+  user_pred = pd.Series(form_user_prediction(userID, 500)).sort_values(ascending=False)[0:n]
   indexes = user_pred.index.values
   return indexes
 
@@ -88,10 +91,10 @@ def rec_every_user(n=20):
 
 start_time = time()
 
-#recommendations = rec_every_user(20)
-recommendations = fn.rec_most_pop(userIDs, songs, by = 'tot', n=20)
+#recommendations = rec_every_user(50)
+recommendations = fn.rec_most_pop(userIDs, songs, by = 'occ', n=50)
 
-_, ratings_eval = fn.form_tuples(R, R_test)
+_, ratings_eval = fn.form_tuples(R, R_test, knn=True)
 
 ext_ratings_eval = fn.extract_evaluations(ratings_eval)
 
@@ -114,10 +117,13 @@ sc = spark.sparkContext
 prediction_and_labels = sc.parallelize(pred_label)
 metrics = RankingMetrics(prediction_and_labels)
 mean_avg_prec= metrics.meanAveragePrecision
+ndcg= metrics.precisionAt(20)
+
+elapsed_time = time()-start_time
 
 spark.stop()
 
-elapsed_time = time()-start_time
+
 
 #r = recommend_user('00106661302d2251d8bb661c91850caa65096457', 20)
 #R_pred = form_R_pred(30)
