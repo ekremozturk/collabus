@@ -45,7 +45,7 @@ def k_similar_items(k=30):
     k_sim_songs.append(similar_items(song, k))
   return k_sim_songs
 
-K = np.asarray(k_similar_items(k=500))
+K = np.asarray(k_similar_items(k=50))
 
 def u_pred_i(userID, songID, k=30):
   sim_items = K[song_dict[songID]]
@@ -77,7 +77,7 @@ def form_R_pred(k):
   return pd.DataFrame(data = R_pred)
 
 def recommend_user(userID, n=20):
-  user_pred = pd.Series(form_user_prediction(userID, 500)).sort_values(ascending=False)[0:n]
+  user_pred = pd.Series(form_user_prediction(userID, 50)).sort_values(ascending=False)[0:n]
   indexes = user_pred.index.values
   return indexes
 
@@ -87,7 +87,8 @@ def rec_every_user(n=20):
   for _id in userIDs:
     recommendations.append(recommend_user(_id, n))
     count += 1
-    print('User ' + str(count)+ ' finished -> ' + '%'+str(count/len(userIDs)*100)+' complete! ')
+    if count%100 == 0:
+      print('User ' + str(count)+ ' finished -> ' + '%'+str(count/len(userIDs)*100)+' complete! ')
   return pd.DataFrame(data = recommendations, index=userIDs, columns=np.arange(n))
 
 start_time = time()
