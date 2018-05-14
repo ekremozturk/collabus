@@ -13,17 +13,17 @@ from math import log, exp
 ##############################################################################
 
 def load_files():
-  triplets = pd.read_table('subset/train_triplets.txt',
+  triplets = pd.read_table('subset3/train_triplets.txt',
                          sep=' ',
                          header=None,
                          names=['userID','itemID','playCount'])
 
-  users = pd.read_table('subset/user_play_mean.txt',
+  users = pd.read_table('subset3/user_play_mean.txt',
                          sep=' ',
                          header=None,
                          names=['ID','totalPlay','occurence', 'mean'])
 
-  songs = pd.read_table('subset/song_play_mean.txt',
+  songs = pd.read_table('subset3/song_play_mean.txt',
                          sep=' ',
                          header=None,
                          names=['ID','totalPlay','occurence', 'mean'])
