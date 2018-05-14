@@ -12,6 +12,8 @@ from time import time
 import taste_fn as fn
 import song_details as sd
 
+start_time = time()
+
 triplets, users, songs = fn.load_files()
 
 #only ids
@@ -20,15 +22,13 @@ userIDs, songIDs = fn.ids(users, songs)
 #dictionaries
 user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
 
-train_DF, test_DF = fn.split_into_train_test(triplets)
+triplets = fn.replace_DF(triplets, user_dict, song_dict)
 
-start_time = time()
-#train_DF, test_DF = fn.replace_DF(train_DF, test_DF, user_dict, song_dict)
+train_DF, test_DF = fn.split_into_train_test(triplets)
 
 #record and similarity matrices
 R, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
 R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = True)
-elapsed_time = time()-start_time
 
 def similar_items(songID, k=30):
   song_idx = song_dict[songID]
@@ -91,12 +91,10 @@ def rec_every_user(n=20):
       print('User ' + str(count)+ ' finished -> ' + '%'+str(count/len(userIDs)*100)+' complete! ')
   return pd.DataFrame(data = recommendations, index=userIDs, columns=np.arange(n))
 
-start_time = time()
+recommendations = rec_every_user(50)
+#recommendations = fn.rec_most_pop(userIDs, songs, by = 'occ', n=50)
 
-#recommendations = rec_every_user(50)
-recommendations = fn.rec_most_pop(userIDs, songs, by = 'occ', n=50)
-
-_, ratings_eval = fn.form_tuples(R, R_test, knn=True)
+_, ratings_eval = fn.form_tuples(train_DF, test_DF)
 
 ext_ratings_eval = fn.extract_evaluations(ratings_eval)
 

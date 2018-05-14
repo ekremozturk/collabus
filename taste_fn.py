@@ -56,16 +56,19 @@ def form_dictionaries(userIDs, songIDs):
   return user_dict, song_dict
 
 ##############################################################################
-
-def split_into_train_test(df, cv =5):
-    subset_list = list()
-    for i in range(cv):
-        remain = df.groupby("userID", group_keys=False).apply(lambda df: df.sample(frac=1/(cv-i)))
-        df = df.drop(remain.index)
-        subset_list.append(remain)
-  #train = df.groupby("userID", group_keys=False).apply(lambda df: df.sample(frac=1/cv))
-  #test = df.drop(train.index)
-    return subset_list
+def split_into_train_test(df, frac=0.8):
+  train = df.groupby("userID", group_keys=False).apply(lambda df: df.sample(frac=frac))
+  test = df.drop(train.index)
+  
+  return train, test
+##############################################################################
+def split_into_train_test_cv(df, cv=5):
+  subset_list = list()
+  for i in range(cv):
+      remain = df.groupby("userID", group_keys=False).apply(lambda df: df.sample(frac=1/(cv-i)))
+      df = df.drop(remain.index)
+      subset_list.append(remain)
+  return subset_list
 ##############################################################################
 
 def form_records(triplets, user_dict, song_dict, normalization = False):
@@ -78,10 +81,9 @@ def form_records(triplets, user_dict, song_dict, normalization = False):
     counts_logged = triplets['playCount'].apply(log)+1
     
     for t, logged_count in zip(np.asmatrix(triplets), counts_logged):
-      user_idx = user_dict[t[0,0]]
-      song_idx = song_dict[t[0,1]]
+      user_idx = t[0,0]
+      song_idx = t[0,1]
       R[user_idx, song_idx] = logged_count
-      #R[t[0,0], t[0,1]] = logged_count
   
     #Form item-item similarity matrix
     from sklearn.metrics.pairwise import cosine_similarity
@@ -91,70 +93,36 @@ def form_records(triplets, user_dict, song_dict, normalization = False):
   
   else:
     for t in triplets.values:
-      user_idx = user_dict[t[0]]
-      song_idx = song_dict[t[1]]
+      user_idx = t[0]
+      song_idx = t[1]
       R[user_idx, song_idx] = t[2]
       
     return R
 
 ##############################################################################
 
-def replace_DF(train_DF, test_DF, user_dict, song_dict):
-  train_DF = train_DF.replace(user_dict)
-  train_DF = train_DF.replace(song_dict)
-  test_DF = test_DF.replace(user_dict)
-  test_DF = test_DF.replace(song_dict)
+def replace_DF(DF, user_dict, song_dict):
+
+  DF = DF.applymap(lambda x: user_dict.get(x,x))
+  DF = DF.applymap(lambda x: song_dict.get(x,x))
   
-  return train_DF, test_DF
+  return DF
 
 ##############################################################################
     
-def form_tuples(record_train, record_test, virtual=False, knn=False):
+def form_tuples(train_DF, test_DF, virtual=False, knn=False):
 
   print("Creating rating tuples...")
   
-  if virtual:
-    ratings_train = []
-    for i in range(record_train.shape[0]):
-      for j in range(record_train.shape[1]):
-        count = float(record_train.iloc[i,j])
-        rating = (i, j, count)
-        ratings_train.append(rating)
+  train_rdd = []
+  for idx, row in train_DF.iterrows():
+    train_rdd.append((int(row[0]), int(row[1]), float(row[2])))
   
-    ratings_test = []
-    ratings_eval = []
-    for i in range(record_test.shape[0]):
-      for j in range(record_test.shape[1]):
-        count = record_test.iloc[i,j]
-        if(count>0):
-          rating = (i, j)
-          evali = (i, j, 1.0)
-          ratings_test.append(rating)
-          ratings_eval.append(evali)
-  
-    return ratings_train, ratings_eval
+  test_set = []
+  for idx, row in test_DF.iterrows():
+    test_set.append((int(row[0]), int(row[1])))
 
-  ratings_train = []
-  if knn==False:
-    for i in range(record_train.shape[0]):
-      for j in range(record_train.shape[1]):
-        count = float(record_train[i,j])
-        if count>0:
-          rating = (i, j, count)
-          ratings_train.append(rating)
-
-  ratings_test = []
-  ratings_eval = []
-  for i in range(record_test.shape[0]):
-    for j in range(record_test.shape[1]):
-      count = record_test[i,j]
-      if(count>0):
-        rating = (i, j)
-        evali = (i, j, 1.0)
-        ratings_test.append(rating)
-        ratings_eval.append(evali)
-
-  return ratings_train, ratings_eval
+  return train_rdd, test_set
 
 ##############################################################################
   
