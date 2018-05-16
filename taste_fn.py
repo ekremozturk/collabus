@@ -251,6 +251,7 @@ def agg_fn(agg, item):
 def form_groups(userGroups, train_data, test_data):
   merged_train_ratings = []
   merged_test_ratings = []
+  count = 0
   for group in userGroups:
     train_group_Series = []
     test_group_Series = []
@@ -265,7 +266,11 @@ def form_groups(userGroups, train_data, test_data):
       
     merged_train_ratings.append(pd.concat(train_group_Series, axis=1).fillna(0).astype(int))
     merged_test_ratings.append(pd.concat(test_group_Series, axis=1).fillna(0).astype(int))
-
+    
+    count += 1
+    if count%100 == 0:
+      print('Group ' + str(count)+ ' formed-> ' + '%'+str(count/len(userGroups)*100)+' complete! ')
+      
   return merged_train_ratings, merged_test_ratings
 
 def form_virtual_users(groups, song_dict, agg = 'average'):
