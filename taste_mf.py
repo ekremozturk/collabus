@@ -14,8 +14,6 @@ import pandas as pd
 from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
 
 import taste_fn as fn
-        
-#train_rdd, test_set = fn.form_tuples(virtual_training, virtual_test, virtual=True)
 
 start_time = time()
 
@@ -25,16 +23,17 @@ userIDs, songIDs = fn.ids(users, songs)
 
 user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
 
-print("Replacing IDs with indexes....")
-triplets= fn.replace_DF(triplets, user_dict, song_dict)
+#print("Replacing IDs with indexes....")
+#triplets= fn.replace_DF(triplets, user_dict, song_dict)
 
 print("Splitting into sets....")
-train_DF, test_DF = fn.split_into_train_test(triplets)
-#print("Forming user groups....")
-#userGroups = fn.group_users(userIDs ,12)
-#train_groups, test_groups = fn.form_groups(userGroups, train_DF, test_DF)
-#virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='average')
-#virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='average')
+train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
+
+print("Forming user groups....")
+userGroups = fn.group_users(userIDs ,12)
+train_groups, test_groups = fn.form_groups(userGroups, train_DF, test_DF)
+virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='average')
+virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='average')
 
 #print("Splitting into subsets....")
 #subsets = fn.split_into_train_test_cv(triplets)
@@ -52,9 +51,9 @@ def get_records(train_DF, test_DF):
   return record_train, record_test
 
 ############################################################################
-def evaluate (train_DF, test_DF, params):
+def evaluate (train_DF, test_DF, params, virtual=False):
   
-  train_rdd, test_set = fn.form_tuples(train_DF, test_DF)
+  train_rdd, test_set = fn.form_tuples(train_DF, test_DF, virtual=virtual)
   
   train_rdd = sc.parallelize(train_rdd)
   
@@ -66,7 +65,7 @@ def evaluate (train_DF, test_DF, params):
                             alpha=alpha_)
 
   print("Making recommendations...")
-  recommendations = model.recommendProductsForUsers(50).collect()
+  recommendations = model.recommendProductsForUsers(100).collect()
   
   print("Preparing for metrics...")
   pred_label = fn.prepare_prediction_label(recommendations,test_set)
@@ -75,7 +74,8 @@ def evaluate (train_DF, test_DF, params):
   map_= metrics.meanAveragePrecision
   ndcg_= metrics.precisionAt(20)
 
-  return map_, ndcg_
+  #return map_, ndcg_
+  return map_, ndcg_, prediction_and_labels.collect()
   
 ############################################################################    
 def cross_validation(subsets, paramGrid):
@@ -127,8 +127,8 @@ paramGrid = form_param_grid([20, 50], [1.0, 3.5, 7.0], [10.0, 20.0])
 
 #cv_scores = cross_validation(subsets, paramGrid)
 
-#map_, ndcg_ = evaluate(virtual_training, virtual_test, [20, 1.0, 10.0])
-map_, ndcg_ = evaluate(train_DF, test_DF, [20, 1.0, 10.0])
+map_, ndcg_, pal = evaluate(virtual_training, virtual_test, [20, 1.0, 10.0], virtual=True)
+#map_, ndcg_ = evaluate(train_DF, test_DF, [20, 1.0, 10.0])
 
 print("Stopping spark session...")
 spark.stop()

@@ -22,13 +22,25 @@ userIDs, songIDs = fn.ids(users, songs)
 #dictionaries
 user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
 
-triplets = fn.replace_DF(triplets, user_dict, song_dict)
+#triplets = fn.replace_DF(triplets, user_dict, song_dict)
 
-train_DF, test_DF = fn.split_into_train_test(triplets)
-
+train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
 #record and similarity matrices
-R, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
-R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = True)
+#R, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
+#R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = True)
+
+##############################################################################
+print("Forming user groups....")
+userGroups = fn.group_users(userIDs ,12)
+train_groups, test_groups = fn.form_groups(userGroups, train_DF, test_DF)
+print("Forming virtual users....")
+virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='average')
+virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='average')
+train_DF = fn.replace_DF(train_DF, user_dict, song_dict)
+_, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
+R, _ = fn.form_records(virtual_training, user_dict, song_dict, normalization = True, virtual=True)
+R_test, _ = fn.form_records(virtual_test, user_dict, song_dict, normalization = True, virtual=True)
+##############################################################################
 
 def similar_items(songID, k=30):
   song_idx = song_dict[songID]
@@ -47,54 +59,56 @@ def k_similar_items(k=30):
 
 K = np.asarray(k_similar_items(k=50))
 
-def u_pred_i(userID, songID, k=30):
+def u_pred_i(user_idx, songID, k=30):
   sim_items = K[song_dict[songID]]
   sim_idx = sim_items[:,0].astype(int)
   sim_ratio = sim_items[:,1].astype(float)
-  user_idx = user_dict[userID]
+  #user_idx = user_dict[userID]
   R_user = R[user_idx, sim_idx].astype(float)
   
   return (sim_ratio*R_user).sum()/sim_ratio.sum()
 
-def form_user_prediction(userID, k=30):
-  user_idx = user_dict[userID]
+def form_user_prediction(user_idx, k=30):
+  #user_idx = user_dict[userID]
   user_array = R[user_idx,:]
   user_pred = []
   for idx, item in enumerate(user_array):
     songID = songIDs[idx]
     if item == 0:
-      r_pred = u_pred_i(userID, songID, k)
+      r_pred = u_pred_i(user_idx, songID, k)
     else:
       r_pred = 0
     user_pred.append(r_pred)
   return user_pred
 
-def form_R_pred(k):
-  R_pred = []
-  for uid in userIDs[0:1]:
-    preds = form_user_prediction(uid, k)
-    R_pred.append(preds)
-  return pd.DataFrame(data = R_pred)
+#def form_R_pred(k):
+#  R_pred = []
+#  for uid in userIDs[0:1]:
+#    preds = form_user_prediction(uid, k)
+#    R_pred.append(preds)
+#  return pd.DataFrame(data = R_pred)
 
-def recommend_user(userID, n=20):
-  user_pred = pd.Series(form_user_prediction(userID, 50)).sort_values(ascending=False)[0:n]
+def recommend_user(user_idx, n=20):
+  user_pred = pd.Series(form_user_prediction(user_idx, 50)).sort_values(ascending=False)[0:n]
   indexes = user_pred.index.values
   return indexes
 
 def rec_every_user(n=20):
   recommendations = []
   count = 0
-  for _id in userIDs:
-    recommendations.append(recommend_user(_id, n))
+  for user_idx, value in enumerate(R):
+    recommendations.append(recommend_user(user_idx, n))
     count += 1
     if count%100 == 0:
-      print('User ' + str(count)+ ' finished -> ' + '%'+str(count/len(userIDs)*100)+' complete! ')
-  return pd.DataFrame(data = recommendations, index=userIDs, columns=np.arange(n))
+      print('User ' + str(count)+ ' finished -> ' + '%'+str(count/len(R)*100)+' complete! ')
+  return pd.DataFrame(data = recommendations, index=np.arange(len(R)), columns=np.arange(n))
 
-recommendations = rec_every_user(50)
-#recommendations = fn.rec_most_pop(userIDs, songs, by = 'occ', n=50)
+recommendations = rec_every_user(n=100)
+#recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=20)
+#recommendations = fn.rec_random(R, songs, n=100)
 
-_, ratings_eval = fn.form_tuples(train_DF, test_DF)
+#_, ratings_eval = fn.form_tuples(train_DF, test_DF)
+_, ratings_eval = fn.form_tuples(virtual_training, virtual_test, virtual=True)
 
 ext_ratings_eval = fn.extract_evaluations(ratings_eval)
 

@@ -13,17 +13,17 @@ from math import log, exp
 ##############################################################################
 
 def load_files():
-  triplets = pd.read_table('subset3/train_triplets.txt',
+  triplets = pd.read_table('subset/train_triplets.txt',
                          sep=' ',
                          header=None,
                          names=['userID','itemID','playCount'])
 
-  users = pd.read_table('subset3/user_play_mean.txt',
+  users = pd.read_table('subset/user_play_mean.txt',
                          sep=' ',
                          header=None,
                          names=['ID','totalPlay','occurence', 'mean'])
 
-  songs = pd.read_table('subset3/song_play_mean.txt',
+  songs = pd.read_table('subset/song_play_mean.txt',
                          sep=' ',
                          header=None,
                          names=['ID','totalPlay','occurence', 'mean'])
@@ -56,7 +56,7 @@ def form_dictionaries(userIDs, songIDs):
   return user_dict, song_dict
 
 ##############################################################################
-def split_into_train_test(df, frac=0.8):
+def split_into_train_test(df, frac=0.6):
   train = df.groupby("userID", group_keys=False).apply(lambda df: df.sample(frac=frac))
   test = df.drop(train.index)
   
@@ -71,12 +71,24 @@ def split_into_train_test_cv(df, cv=5):
   return subset_list
 ##############################################################################
 
-def form_records(triplets, user_dict, song_dict, normalization = False):
+def form_records(triplets, user_dict, song_dict, normalization = False, virtual=False):
   
   R = np.zeros((len(user_dict), len(song_dict)))
   
   if normalization:
     
+    if virtual:
+      R = np.zeros((triplets.index.size, len(song_dict)))
+      
+      for group_idx, row in triplets.iterrows():
+        for song_idx, count in row.iteritems():
+          R[group_idx, song_idx] = log(count+1)
+      
+      from sklearn.metrics.pairwise import cosine_similarity
+      M = cosine_similarity(R.transpose())
+      
+      return R, M
+      
     #Log(playCount)+1
     counts_logged = triplets['playCount'].apply(log)+1
     
@@ -114,6 +126,23 @@ def form_tuples(train_DF, test_DF, virtual=False, knn=False):
 
   print("Creating rating tuples...")
   
+  if(virtual==True):
+    train_rdd = []
+    for group_idx, row in train_DF.iterrows():
+      for song_idx, count in row.iteritems():
+        if(count>0):
+          rating = (group_idx, song_idx, count)
+          train_rdd.append(rating)
+  
+    test_set = []
+    for group_idx, row in test_DF.iterrows():
+      for song_idx, count in row.iteritems():
+        if(count>0):
+          rating = (group_idx, song_idx)
+          test_set.append(rating)
+      
+    return train_rdd, test_set
+  
   train_rdd = []
   for idx, row in train_DF.iterrows():
     train_rdd.append((int(row[0]), int(row[1]), float(row[2])))
@@ -121,6 +150,8 @@ def form_tuples(train_DF, test_DF, virtual=False, knn=False):
   test_set = []
   for idx, row in test_DF.iterrows():
     test_set.append((int(row[0]), int(row[1])))
+    
+  
 
   return train_rdd, test_set
 
@@ -211,10 +242,10 @@ def group_users(userIDs, g_size):
 
 def agg_fn(agg, item):
   if(agg=='average'):
-    return item.mean()
+    return item[item>0].mean()
   if(agg=='normalized_avg'):
     item = item+1
-    item = item.apply(log)+1
+    item = item[item>1].apply(log)+1
     return exp(item.mean())
 
 def form_groups(userGroups, train_data, test_data):
@@ -239,11 +270,18 @@ def form_groups(userGroups, train_data, test_data):
 
 def form_virtual_users(groups, song_dict, agg = 'average'):
   virtual_users = []
+  count = 0
   for group in groups:
+    
     virtual_user = []
+    
     for idx, item in group.iterrows():
       virtual_user.append(agg_fn(agg, item))
     virtual_users.append(pd.Series(virtual_user, index = group.index.values).fillna(0))
+    count += 1
+    if count%100 == 0:
+      print('Group ' + str(count)+ ' formed-> ' + '%'+str(count/len(groups)*100)+' complete! ')
+      
   virtual_users = pd.DataFrame(virtual_users).fillna(0)
   song_idx_cols = pd.Series([song_dict[x] for x in virtual_users.columns.values], index = virtual_users.columns.values)
   
@@ -259,14 +297,18 @@ def extract_most_pop(songs, n):
   
   return by_tot_play, by_occurence, by_mean
   
-def rec_most_pop(userIDs, songs,  by = 'occ', n=20):
+def rec_most_pop(R, songs,  by = 'occ', n=20):
   
   totPlay, occ, mean = extract_most_pop(songs, n)
   
   if by == 'tot':
-    return pd.DataFrame(np.full((len(userIDs), n), totPlay, dtype=int), index=userIDs)
+    return pd.DataFrame(np.full((len(R), n), totPlay, dtype=int), index=np.arange(len(R)))
   elif by == 'occ':
-    return pd.DataFrame(np.full((len(userIDs), n), occ, dtype=int), index=userIDs)
+    return pd.DataFrame(np.full((len(R), n), occ, dtype=int), index=np.arange(len(R)))
   elif by == 'mean':
-    return pd.DataFrame(np.full((len(userIDs), n), mean, dtype=int), index=userIDs)
+    return pd.DataFrame(np.full((len(R), n), mean, dtype=int), index=np.arange(len(R)))
+  
+def rec_random(R, songs, n=20):
+  by_random= songs.sample(frac=0.2).iloc[:n].index.values
+  return pd.DataFrame(np.full((len(R), n), by_random, dtype=int), index=np.arange(len(R)))
   
