@@ -23,17 +23,16 @@ userIDs, songIDs = fn.ids(users, songs)
 
 user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
 
-#print("Replacing IDs with indexes....")
-#triplets= fn.replace_DF(triplets, user_dict, song_dict)
+print("Replacing IDs with indexes....")
+triplets= fn.replace_DF(triplets, user_dict, song_dict)
 
 print("Splitting into sets....")
 train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
 
 print("Forming user groups....")
-userGroups = fn.group_users(userIDs ,12)
-train_groups, test_groups = fn.form_groups(userGroups, train_DF, test_DF)
-virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='average')
-virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='average')
+train_groups, test_groups = fn.load_groups(4)
+virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='avg')
+virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='avg')
 
 #print("Splitting into subsets....")
 #subsets = fn.split_into_train_test_cv(triplets)
@@ -71,11 +70,9 @@ def evaluate (train_DF, test_DF, params, virtual=False):
   pred_label = fn.prepare_prediction_label(recommendations,test_set)
   prediction_and_labels = sc.parallelize(pred_label)
   metrics = RankingMetrics(prediction_and_labels)
-  map_= metrics.meanAveragePrecision
-  ndcg_= metrics.precisionAt(20)
 
   #return map_, ndcg_
-  return map_, ndcg_, prediction_and_labels.collect()
+  return metrics, prediction_and_labels.collect()
   
 ############################################################################    
 def cross_validation(subsets, paramGrid):
@@ -91,7 +88,8 @@ def cross_validation(subsets, paramGrid):
       test_DF = subsets[num]
       train_DF = pd.concat([element for i, element in enumerate(subsets) if i not in {num}])
           
-      map_, ndcg_ = evaluate(train_DF, test_DF, params)
+      metrics, _ = evaluate(train_DF, test_DF, params)
+      map_, ndcg_ = metrics.meanAveragePrecision, metrics.precisionAt(7)
       map_list.append(map_)
       ndcg_list.append(ndcg_)
       
@@ -123,19 +121,27 @@ spark = SparkSession\
 sc = spark.sparkContext
 
 print("Starting cross validation...")
-paramGrid = form_param_grid([20, 50], [1.0, 3.5, 7.0], [10.0, 20.0])
-
+paramGrid = form_param_grid([10, 20, 50, 100], [0.01, 1.0, 10.0], [0.1, 10.0, 40.0])
+paramGrid.append([50, 5.0, 10.0])
 #cv_scores = cross_validation(subsets, paramGrid)
 
-map_, ndcg_, pal = evaluate(virtual_training, virtual_test, [20, 1.0, 10.0], virtual=True)
-#map_, ndcg_ = evaluate(train_DF, test_DF, [20, 1.0, 10.0])
+map_list = []
+for param in paramGrid:
+  metrics, pal = evaluate(virtual_training, virtual_test, param, virtual=True)
+  map_= metrics.meanAveragePrecision
+  map_list.append([param, map_])
+
+#ndcg_= metrics.precisionAt(7)
+#metrics, pal = evaluate(train_DF, test_DF, [50, 5.0, 10.0])
+#map_= metrics.meanAveragePrecision
+elapsed_time = time()-start_time
 
 print("Stopping spark session...")
 spark.stop()
 print("Stopped.")
-elapsed_time = time()-start_time
 
-#######################3
+
+#######################
 #model.save("subset/als")
 #model = ALSModel.load("subset/als")
 

@@ -22,7 +22,7 @@ userIDs, songIDs = fn.ids(users, songs)
 #dictionaries
 user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
 
-#triplets = fn.replace_DF(triplets, user_dict, song_dict)
+triplets = fn.replace_DF(triplets, user_dict, song_dict)
 
 train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
 #record and similarity matrices
@@ -30,16 +30,16 @@ train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
 #R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = True)
 
 ##############################################################################
-print("Forming user groups....")
-userGroups = fn.group_users(userIDs ,12)
-train_groups, test_groups = fn.form_groups(userGroups, train_DF, test_DF)
 print("Forming virtual users....")
-virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='average')
-virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='average')
+train_groups, test_groups = fn.load_groups(4)
+virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='avg')
+virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='avg')
 train_DF = fn.replace_DF(train_DF, user_dict, song_dict)
-_, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
-R, _ = fn.form_records(virtual_training, user_dict, song_dict, normalization = True, virtual=True)
+#_, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
+R, M = fn.form_records(virtual_training, user_dict, song_dict, normalization = True, virtual=True)
 R_test, _ = fn.form_records(virtual_test, user_dict, song_dict, normalization = True, virtual=True)
+
+elapsed_time_form = time()-start_time
 ##############################################################################
 
 def similar_items(songID, k=30):
@@ -104,7 +104,7 @@ def rec_every_user(n=20):
   return pd.DataFrame(data = recommendations, index=np.arange(len(R)), columns=np.arange(n))
 
 recommendations = rec_every_user(n=100)
-#recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=20)
+#recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=500)
 #recommendations = fn.rec_random(R, songs, n=100)
 
 #_, ratings_eval = fn.form_tuples(train_DF, test_DF)
@@ -130,14 +130,12 @@ sc = spark.sparkContext
  
 prediction_and_labels = sc.parallelize(pred_label)
 metrics = RankingMetrics(prediction_and_labels)
-mean_avg_prec= metrics.meanAveragePrecision
-ndcg= metrics.precisionAt(20)
+map_= metrics.meanAveragePrecision
+ndcg_= metrics.precisionAt(7)
 
 elapsed_time = time()-start_time
 
 spark.stop()
-
-
 
 #r = recommend_user('00106661302d2251d8bb661c91850caa65096457', 20)
 #R_pred = form_R_pred(30)
