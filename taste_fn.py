@@ -130,14 +130,14 @@ def form_tuples(train_DF, test_DF, virtual=False, knn=False):
     train_rdd = []
     for group_idx, row in train_DF.iterrows():
       for song_idx, count in row.iteritems():
-        if(count>0):
+        if(count!=0):
           rating = (group_idx, song_idx, count)
           train_rdd.append(rating)
   
     test_set = []
     for group_idx, row in test_DF.iterrows():
       for song_idx, count in row.iteritems():
-        if(count>0):
+        if(count!=0):
           rating = (group_idx, song_idx)
           test_set.append(rating)
       
@@ -173,6 +173,16 @@ def load_subsets():
   
 ##############################################################################
   
+def normalize_songs(triplets, songs):
+  all_listens = list()
+  for idx, song in songs.iterrows():
+    listens = triplets[triplets.itemID==song.ID]
+    listens['playCount'] = listens['playCount']/song['mean']
+    all_listens.append(listens)
+  
+  return pd.concat(all_listens)
+
+##############################################################################
 def extract_recommendations(recommendations, knn=False):
   rec = defaultdict(list)
   
@@ -241,11 +251,10 @@ def group_users(userIDs, g_size):
 ##############################################################################
 
 def agg_fn(agg, item):
-  if(agg=='average'):
+  if(agg=='avg'):
     return item[item>0].mean()
   if(agg=='normalized_avg'):
-    item = item+1
-    item = item[item>1].apply(log)+1
+    item = item[item>0].apply(log)+1
     return exp(item.mean())
 
 def form_groups(userGroups, train_data, test_data):
@@ -268,12 +277,30 @@ def form_groups(userGroups, train_data, test_data):
     merged_test_ratings.append(pd.concat(test_group_Series, axis=1).fillna(0).astype(int))
     
     count += 1
-    if count%100 == 0:
+    if count%10 == 0:
       print('Group ' + str(count)+ ' formed-> ' + '%'+str(count/len(userGroups)*100)+' complete! ')
       
   return merged_train_ratings, merged_test_ratings
 
-def form_virtual_users(groups, song_dict, agg = 'average'):
+def load_groups(size=4):
+  import pickle
+  
+#  with open("train4.txt", "wb") as fp:   #Pickling
+#    pickle.dump(train_groups, fp)
+  
+  train_filename = "subset/groups/train"+str(size)+".txt"
+  test_filename = "subset/groups/test"+str(size)+".txt"
+  
+  with open(train_filename, "rb") as fp:   # Unpickling
+    train = pickle.load(fp)
+  with open(test_filename, "rb") as fp:   # Unpickling
+    test = pickle.load(fp)
+  
+  return train, test
+  
+  
+
+def form_virtual_users(groups, song_dict, agg = 'avg'):
   virtual_users = []
   count = 0
   for group in groups:
@@ -284,7 +311,7 @@ def form_virtual_users(groups, song_dict, agg = 'average'):
       virtual_user.append(agg_fn(agg, item))
     virtual_users.append(pd.Series(virtual_user, index = group.index.values).fillna(0))
     count += 1
-    if count%100 == 0:
+    if count%10 == 0:
       print('Group ' + str(count)+ ' formed-> ' + '%'+str(count/len(groups)*100)+' complete! ')
       
   virtual_users = pd.DataFrame(virtual_users).fillna(0)
