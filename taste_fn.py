@@ -69,6 +69,7 @@ def split_into_train_test_cv(df, cv=5):
       df = df.drop(remain.index)
       subset_list.append(remain)
   return subset_list
+
 ##############################################################################
 
 def form_records(triplets, user_dict, song_dict, normalization = False, virtual=False):
@@ -170,17 +171,6 @@ def load_subsets():
                        names=['userID','itemID','playCount'])
 
   return train_triplets, test_triplets
-  
-##############################################################################
-  
-def normalize_songs(triplets, songs):
-  all_listens = list()
-  for idx, song in songs.iterrows():
-    listens = triplets[triplets.itemID==song.ID]
-    listens['playCount'] = listens['playCount']/song['mean']
-    all_listens.append(listens)
-  
-  return pd.concat(all_listens)
 
 ##############################################################################
 def extract_recommendations(recommendations, knn=False):

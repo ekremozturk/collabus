@@ -14,6 +14,7 @@ import song_details as sd
 
 start_time = time()
 
+print('Loading..')
 triplets, users, songs = fn.load_files()
 
 #only ids
@@ -24,22 +25,24 @@ user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
 
 triplets = fn.replace_DF(triplets, user_dict, song_dict)
 
+print('Splitting into train and test sets..')
 train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
-#record and similarity matrices
-#R, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
-#R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = True)
+
+print('Forming record and similarity matrices..')
+R, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
+R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = True)
 
 ##############################################################################
-print("Forming virtual users....")
-train_groups, test_groups = fn.load_groups(4)
-virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='avg')
-virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='avg')
-train_DF = fn.replace_DF(train_DF, user_dict, song_dict)
-#_, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
-R, M = fn.form_records(virtual_training, user_dict, song_dict, normalization = True, virtual=True)
-R_test, _ = fn.form_records(virtual_test, user_dict, song_dict, normalization = True, virtual=True)
-
-elapsed_time_form = time()-start_time
+#print("Forming virtual users....")
+#train_groups, test_groups = fn.load_groups(4)
+#virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='normalized_avg')
+#virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='normalized_avg')
+#train_DF = fn.replace_DF(train_DF, user_dict, song_dict)
+##_, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
+#R, M = fn.form_records(virtual_training, user_dict, song_dict, normalization = True, virtual=True)
+#R_test, _ = fn.form_records(virtual_test, user_dict, song_dict, normalization = True, virtual=True)
+#
+#elapsed_time_form = time()-start_time
 ##############################################################################
 
 def similar_items(songID, k=30):
@@ -63,13 +66,11 @@ def u_pred_i(user_idx, songID, k=30):
   sim_items = K[song_dict[songID]]
   sim_idx = sim_items[:,0].astype(int)
   sim_ratio = sim_items[:,1].astype(float)
-  #user_idx = user_dict[userID]
   R_user = R[user_idx, sim_idx].astype(float)
   
   return (sim_ratio*R_user).sum()/sim_ratio.sum()
 
 def form_user_prediction(user_idx, k=30):
-  #user_idx = user_dict[userID]
   user_array = R[user_idx,:]
   user_pred = []
   for idx, item in enumerate(user_array):
@@ -103,12 +104,15 @@ def rec_every_user(n=20):
       print('User ' + str(count)+ ' finished -> ' + '%'+str(count/len(R)*100)+' complete! ')
   return pd.DataFrame(data = recommendations, index=np.arange(len(R)), columns=np.arange(n))
 
-recommendations = rec_every_user(n=100)
-#recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=500)
-#recommendations = fn.rec_random(R, songs, n=100)
+start_time = time()
 
-#_, ratings_eval = fn.form_tuples(train_DF, test_DF)
-_, ratings_eval = fn.form_tuples(virtual_training, virtual_test, virtual=True)
+print('Recommending...')
+recommendations = rec_every_user(n=200)
+#recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=200)
+#recommendations = fn.rec_random(R, songs, n=200)
+
+_, ratings_eval = fn.form_tuples(train_DF, test_DF)
+#_, ratings_eval = fn.form_tuples(virtual_training, virtual_test, virtual=True)
 
 ext_ratings_eval = fn.extract_evaluations(ratings_eval)
 
@@ -131,7 +135,7 @@ sc = spark.sparkContext
 prediction_and_labels = sc.parallelize(pred_label)
 metrics = RankingMetrics(prediction_and_labels)
 map_= metrics.meanAveragePrecision
-ndcg_= metrics.precisionAt(7)
+ndcg_= metrics.precisionAt(10)
 
 elapsed_time = time()-start_time
 
