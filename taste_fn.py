@@ -13,17 +13,17 @@ from math import log, exp
 ##############################################################################
 
 def load_files():
-  triplets = pd.read_table('subset/train_triplets.txt',
+  triplets = pd.read_table('subset2/train_triplets.txt',
                          sep=' ',
                          header=None,
                          names=['userID','itemID','playCount'])
 
-  users = pd.read_table('subset/user_play_mean.txt',
+  users = pd.read_table('subset2/user_play_mean.txt',
                          sep=' ',
                          header=None,
                          names=['ID','totalPlay','occurence', 'mean'])
 
-  songs = pd.read_table('subset/song_play_mean.txt',
+  songs = pd.read_table('subset2/song_play_mean.txt',
                          sep=' ',
                          header=None,
                          names=['ID','totalPlay','occurence', 'mean'])
@@ -61,6 +61,7 @@ def split_into_train_test(df, frac=0.6):
   test = df.drop(train.index)
   
   return train, test
+
 ##############################################################################
 def split_into_train_test_cv(df, cv=5):
   subset_list = list()
@@ -113,7 +114,6 @@ def form_records(triplets, user_dict, song_dict, normalization = False, virtual=
     return R
 
 ##############################################################################
-
 def replace_DF(DF, user_dict, song_dict):
 
   DF = DF.applymap(lambda x: user_dict.get(x,x))
@@ -122,7 +122,6 @@ def replace_DF(DF, user_dict, song_dict):
   return DF
 
 ##############################################################################
-    
 def form_tuples(train_DF, test_DF, virtual=False, knn=False):
 
   print("Creating rating tuples...")
@@ -157,7 +156,6 @@ def form_tuples(train_DF, test_DF, virtual=False, knn=False):
   return train_rdd, test_set
 
 ##############################################################################
-  
 def load_subsets():
   
   train_triplets = pd.read_table('subset/train_triplets.txt',
@@ -214,7 +212,6 @@ def prepare_prediction_label(recommendations, ratings, knn=False):
   return tuples
     
 ##############################################################################
-
 def group_users(userIDs, g_size):
   
   np.random.shuffle(userIDs)
@@ -238,8 +235,6 @@ def group_users(userIDs, g_size):
   
   return groups
   
-##############################################################################
-
 def agg_fn(agg, item):
   if(agg=='avg'):
     return item[item>0].mean()
@@ -275,8 +270,8 @@ def form_groups(userGroups, train_data, test_data):
 def load_groups(size=4):
   import pickle
   
-#  with open("train4.txt", "wb") as fp:   #Pickling
-#    pickle.dump(train_groups, fp)
+  #with open("train4.txt", "wb") as fp:   #Pickling
+  #pickle.dump(train_groups, fp)
   
   train_filename = "subset/groups/train"+str(size)+".txt"
   test_filename = "subset/groups/test"+str(size)+".txt"
@@ -288,8 +283,6 @@ def load_groups(size=4):
   
   return train, test
   
-  
-
 def form_virtual_users(groups, song_dict, agg = 'avg'):
   virtual_users = []
   count = 0

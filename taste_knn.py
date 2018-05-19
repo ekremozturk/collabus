@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 from time import time
 import taste_fn as fn
-import song_details as sd
 
 start_time = time()
 
@@ -43,6 +42,7 @@ R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = 
 #R_test, _ = fn.form_records(virtual_test, user_dict, song_dict, normalization = True, virtual=True)
 #
 #elapsed_time_form = time()-start_time
+
 ##############################################################################
 
 def similar_items(songID, k=30):
@@ -82,13 +82,6 @@ def form_user_prediction(user_idx, k=30):
     user_pred.append(r_pred)
   return user_pred
 
-#def form_R_pred(k):
-#  R_pred = []
-#  for uid in userIDs[0:1]:
-#    preds = form_user_prediction(uid, k)
-#    R_pred.append(preds)
-#  return pd.DataFrame(data = R_pred)
-
 def recommend_user(user_idx, n=20):
   user_pred = pd.Series(form_user_prediction(user_idx, 50)).sort_values(ascending=False)[0:n]
   indexes = user_pred.index.values
@@ -104,18 +97,16 @@ def rec_every_user(n=20):
       print('User ' + str(count)+ ' finished -> ' + '%'+str(count/len(R)*100)+' complete! ')
   return pd.DataFrame(data = recommendations, index=np.arange(len(R)), columns=np.arange(n))
 
+_, ratings_eval = fn.form_tuples(train_DF, test_DF)
+#_, ratings_eval = fn.form_tuples(virtual_training, virtual_test, virtual=True)
+ext_ratings_eval = fn.extract_evaluations(ratings_eval)
+
 start_time = time()
 
 print('Recommending...')
-recommendations = rec_every_user(n=200)
+#recommendations = rec_every_user(n=200)
 #recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=200)
-#recommendations = fn.rec_random(R, songs, n=200)
-
-_, ratings_eval = fn.form_tuples(train_DF, test_DF)
-#_, ratings_eval = fn.form_tuples(virtual_training, virtual_test, virtual=True)
-
-ext_ratings_eval = fn.extract_evaluations(ratings_eval)
-
+recommendations = fn.rec_random(R, songs, n=50)
 ext_recommendations = fn.extract_recommendations(recommendations, knn=True)
 
 print("Preparing for metrics...")
@@ -137,12 +128,6 @@ metrics = RankingMetrics(prediction_and_labels)
 map_= metrics.meanAveragePrecision
 ndcg_= metrics.precisionAt(10)
 
-elapsed_time = time()-start_time
-
 spark.stop()
 
-#r = recommend_user('00106661302d2251d8bb661c91850caa65096457', 20)
-#R_pred = form_R_pred(30)
-#similar_items('SOAAFYH12A8C13717A' ,M, k=30)
-#u_pred_i('00106661302d2251d8bb661c91850caa65096457', 'SOAAFYH12A8C13717A', M, k=30)
-#form_user_prediction('00106661302d2251d8bb661c91850caa65096457', k=30)
+elapsed_time = time()-start_time
