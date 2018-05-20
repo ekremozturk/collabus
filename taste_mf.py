@@ -50,7 +50,8 @@ def train(train_rdd, params):
                             alpha=alpha_)
   
   return model
-  
+
+##############################################################################
 def evaluate(model, test_set, n=20):
   print("Making recommendations...")
   recommendations = model.recommendProductsForUsers(n).collect()
@@ -62,7 +63,7 @@ def evaluate(model, test_set, n=20):
 
   return metrics
 
-############################################################################  
+############################################################################## 
 def cross_validation(subsets, paramGrid, n=200):
   cv_scores = list()
   map_scores = np.zeros((len(subsets), len(paramGrid)))
@@ -96,7 +97,7 @@ def cross_validation(subsets, paramGrid, n=200):
     cv_scores.append([params, map_statistics[:,param_idx], ndcg_statistics[:,param_idx]])
     
   return cv_scores
-############################################################################
+##############################################################################
 def form_param_grid(ranks, lambdas, alphas):
   paramGrid = list()
   for r in ranks:
@@ -106,13 +107,13 @@ def form_param_grid(ranks, lambdas, alphas):
   
   return paramGrid
           
-############################################################################
+##############################################################################
 def form_and_rdd(train_DF, test_DF, virtual=False):
   train_rdd, test_set = fn.form_tuples(train_DF, test_DF, virtual=virtual)
   train_rdd = sc.parallelize(train_rdd)
   return train_rdd, test_set
 
-############################################################################
+##############################################################################
 def cv_best_params(cv_scores):
   cv_scores = np.asarray(cv_scores)
   cv_scores = sorted(cv_scores, key=lambda x: x[1,0])
@@ -120,7 +121,7 @@ def cv_best_params(cv_scores):
   best_params = best_result[0,:]
   return best_params, best_result, cv_scores
 
-############################################################################
+##############################################################################
 start_time = time()
 
 virtual_training, virtual_test = load_user_groups(song_dict, group_size=4)
