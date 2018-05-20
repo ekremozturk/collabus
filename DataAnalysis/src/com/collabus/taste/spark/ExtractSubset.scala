@@ -65,13 +65,13 @@ object ExtractSubset {
     
     val triplets = spark.sql("SELECT * FROM unTriplets")
     
-    val songSubset = spark.sql("SELECT ID FROM spmTriplets WHERE occurCount>50 and mean<2")
+    val songSubset = spark.sql("SELECT ID FROM spmTriplets WHERE occurCount>100 and mean<2")
     
     //val joinUser = triplets.join(userSubset, $"userID"===$"ID").drop("ID")
     
     val joinSong = triplets.join(songSubset, $"songID"===$"ID").drop("ID").cache()
     
-    val valUsers = joinSong.groupBy("userID").count().filter($"count">10).drop("count")
+    val valUsers = joinSong.groupBy("userID").count().filter($"count">20).drop("count")
     
     val subset = joinSong.join(valUsers, "userID").cache()
     

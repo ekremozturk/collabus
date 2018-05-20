@@ -33,11 +33,9 @@ R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = 
 
 ##############################################################################
 #print("Forming virtual users....")
-#train_groups, test_groups = fn.load_groups(4)
+#train_groups, test_groups = fn.load_groups(12)
 #virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='normalized_avg')
 #virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='normalized_avg')
-#train_DF = fn.replace_DF(train_DF, user_dict, song_dict)
-##_, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
 #R, M = fn.form_records(virtual_training, user_dict, song_dict, normalization = True, virtual=True)
 #R_test, _ = fn.form_records(virtual_test, user_dict, song_dict, normalization = True, virtual=True)
 #
@@ -104,9 +102,9 @@ ext_ratings_eval = fn.extract_evaluations(ratings_eval)
 start_time = time()
 
 print('Recommending...')
-#recommendations = rec_every_user(n=200)
-#recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=200)
-recommendations = fn.rec_random(R, songs, n=200)
+#recommendations = rec_every_user(n=20)
+#recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=20)
+recommendations = fn.rec_random(R, songs, n=20)
 ext_recommendations = fn.extract_recommendations(recommendations, knn=True)
 
 print("Preparing for metrics...")
@@ -126,7 +124,8 @@ sc = spark.sparkContext
 prediction_and_labels = sc.parallelize(pred_label)
 metrics = RankingMetrics(prediction_and_labels)
 map_= metrics.meanAveragePrecision
-ndcg_= metrics.precisionAt(10)
+precision_= metrics.precisionAt(10)
+ndcg_ = metrics.ndcgAt(10)
 
 spark.stop()
 

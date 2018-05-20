@@ -13,17 +13,17 @@ from math import log, exp
 ##############################################################################
 
 def load_files():
-  triplets = pd.read_table('subset1/train_triplets.txt',
+  triplets = pd.read_table('subset/train_triplets.txt',
                          sep=' ',
                          header=None,
                          names=['userID','itemID','playCount'])
 
-  users = pd.read_table('subset1/user_play_mean.txt',
+  users = pd.read_table('subset/user_play_mean.txt',
                          sep=' ',
                          header=None,
                          names=['ID','totalPlay','occurence', 'mean'])
 
-  songs = pd.read_table('subset1/song_play_mean.txt',
+  songs = pd.read_table('subset/song_play_mean.txt',
                          sep=' ',
                          header=None,
                          names=['ID','totalPlay','occurence', 'mean'])
@@ -257,7 +257,7 @@ def form_groups(userGroups, train_data, test_data):
       single_test_data = test_data[test_data['userID']==user]
       single_test_Series = pd.Series(list(single_test_data['playCount']), index = single_test_data['itemID'], name=user)
       test_group_Series.append(single_test_Series)
-      
+    
     merged_train_ratings.append(pd.concat(train_group_Series, axis=1).fillna(0).astype(int))
     merged_test_ratings.append(pd.concat(test_group_Series, axis=1).fillna(0).astype(int))
     
@@ -269,9 +269,6 @@ def form_groups(userGroups, train_data, test_data):
 
 def load_groups(size=4):
   import pickle
-  
-  #with open("train4.txt", "wb") as fp:   #Pickling
-  #pickle.dump(train_groups, fp)
   
   train_filename = "subset/groups/train"+str(size)+".txt"
   test_filename = "subset/groups/test"+str(size)+".txt"
@@ -302,6 +299,28 @@ def form_virtual_users(groups, song_dict, agg = 'avg'):
   
   return virtual_users.rename(columns=song_idx_cols)      
   
+def form_and_save_groups(userIDs, train_data, test_data):
+  import pickle
+  user_groups = group_users(userIDs, 4)
+  train_groups, test_groups = form_groups(user_groups, train_data, test_data)
+  with open("train4.txt", "wb") as fp:   #Pickling
+    pickle.dump(train_groups, fp)
+  with open("test4.txt", "wb") as fp:   #Pickling
+    pickle.dump(test_groups, fp)
+    
+  user_groups = group_users(userIDs, 8)
+  train_groups, test_groups = form_groups(user_groups, train_data, test_data)
+  with open("train8.txt", "wb") as fp:   #Pickling
+    pickle.dump(train_groups, fp)
+  with open("test8.txt", "wb") as fp:   #Pickling
+    pickle.dump(test_groups, fp)
+    
+  user_groups = group_users(userIDs, 12)
+  train_groups, test_groups = form_groups(user_groups, train_data, test_data)
+  with open("train12.txt", "wb") as fp:   #Pickling
+    pickle.dump(train_groups, fp)
+  with open("test12.txt", "wb") as fp:   #Pickling
+    pickle.dump(test_groups, fp)
 ##############################################################################
   
 def extract_most_pop(songs, n):
