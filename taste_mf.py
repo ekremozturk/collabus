@@ -81,7 +81,7 @@ def cross_validation(subsets, paramGrid, n=200):
     for param_idx, params in enumerate(paramGrid):
       model = train(train_rdd, params)
       metrics = evaluate(model, test_set, n)
-      map_, ndcg_ = metrics.meanAveragePrecision, metrics.precisionAt(10)
+      map_, ndcg_ = metrics.meanAveragePrecision, metrics.ndcgAt(10)
       map_scores[num, param_idx] = map_
       ndcg_scores[num, param_idx] = ndcg_
       print("Completed: " + str(num*len(paramGrid)+param_idx))
@@ -124,8 +124,18 @@ def cv_best_params(cv_scores):
 ##############################################################################
 start_time = time()
 
-virtual_training, virtual_test = load_user_groups(song_dict, group_size=4)
+#virtual_training, virtual_test = load_user_groups(song_dict, group_size=4)
 
+def before_factorization(train_rdd, test_set, params, n=20):
+  print("Starting training...")
+  model = train(train_rdd, params)
+  metrics = evaluate(model, test_set, n=n)
+  map_= metrics.meanAveragePrecision
+  precision_= metrics.precisionAt(10)
+  ndcg_ = metrics.ndcgAt(10)
+  
+  return map_, precision_, ndcg_
+    
 print("Initializing Spark....")
 spark = SparkSession\
 .builder\
@@ -135,6 +145,16 @@ spark = SparkSession\
 
 sc = spark.sparkContext
 
+paramGrid = form_param_grid([50], [0.01, 1.0, 10.0], [0.1, 10.0, 40.0])
+paramGrid.append([50, 5.0, 10.0])
+
+#train_rdd, test_set = form_and_rdd(virtual_training, virtual_test, virtual=True)
+
+#scores = list()
+#for params in paramGrid:
+#  map_, precision_, ndcg_ = before_factorization(train_rdd, test_set, params, n=20)
+#  scores.append([params, map_, precision_, ndcg_])
+
 #print("Starting cross validation...")
 #paramGrid = form_param_grid([20, 50], [0.01, 1.0, 10.0], [0.1, 10.0, 40.0])
 #paramGrid.append([50, 5.0, 10.0])
@@ -143,10 +163,11 @@ sc = spark.sparkContext
 #best_params, best_result, cv_scores_sorted = cv_best_params(cv_scores)
 
 train_rdd, test_set = form_and_rdd(train_DF, test_DF)
-model = train(train_rdd, [50, 5.0, 10.0])
+model = train(train_rdd, [50, 10.0, 40.0])
 metrics = evaluate(model, test_set, n=20)
 map_= metrics.meanAveragePrecision
-ndcg_= metrics.precisionAt(10)
+precision_= metrics.precisionAt(10)
+ndcg_= metrics.ndcgAt(10)
 
 elapsed_time = time()-start_time
 
