@@ -33,9 +33,9 @@ object MeanPlayOfUser {
       .getOrCreate()
     
     //Read the file
-    val source =  "/Users/ekrem/Documents/collabus/subset5/train_triplets.txt"
+    val source =  "/Users/ekrem/Documents/collabus/subset4/train_triplets.txt"
       
-    val destination = "/Users/ekrem/Documents/collabus/subset5/user_play_mean.txt"
+    val destination = "/Users/ekrem/Documents/collabus/subset4/user_play_mean.txt"
     
     val lines = spark.sparkContext.textFile(source)
     

@@ -22,21 +22,24 @@ print("Replacing IDs with indexes....")
 triplets= fn.replace_DF(triplets, user_dict, song_dict)
 
 ##############################################################################
-#print("Splitting into sets....")
-#train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
+print("Splitting into sets....")
+train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
 
 ##############################################################################
-#print("Forming user groups....")
-#train_groups, test_groups = fn.load_groups(4)
-#virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='normalized_avg')
-#virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='normalized_avg')
+#print("Splitting into subsets....")
+#subsets = fn.split_into_train_test_cv(triplets, cv=3)
 
 ##############################################################################
-print("Splitting into subsets....")
-subsets = fn.split_into_train_test_cv(triplets, cv=3)
+def load_user_groups(song_dict, group_size=4, agg = 'normalized_avg'):
+  print("Forming user groups....")
+  train_groups, test_groups = fn.load_groups(group_size)
+  virtual_training = fn.form_virtual_users(train_groups, song_dict, agg=agg)
+  virtual_test = fn.form_virtual_users(test_groups, song_dict, agg=agg)
+  
+  return virtual_training, virtual_test
 
-############################################################################
-def evaluate (train_rdd, test_set, params, n=20):
+##############################################################################
+def train(train_rdd, params):
   
   print('Training...')
   rank_, lambda_, alpha_ = params[0], params[1], params[2]
@@ -45,7 +48,10 @@ def evaluate (train_rdd, test_set, params, n=20):
                             iterations=10, 
                             lambda_=lambda_, 
                             alpha=alpha_)
-
+  
+  return model
+  
+def evaluate(model, test_set, n=20):
   print("Making recommendations...")
   recommendations = model.recommendProductsForUsers(n).collect()
   
@@ -55,7 +61,7 @@ def evaluate (train_rdd, test_set, params, n=20):
   metrics = RankingMetrics(prediction_and_labels)
 
   return metrics
-  
+
 ############################################################################  
 def cross_validation(subsets, paramGrid, n=200):
   cv_scores = list()
@@ -72,7 +78,8 @@ def cross_validation(subsets, paramGrid, n=200):
     train_rdd, test_set = form_and_rdd(train_DF, test_DF)
     
     for param_idx, params in enumerate(paramGrid):
-      metrics = evaluate(train_rdd, test_set, params, n)
+      model = train(train_rdd, params)
+      metrics = evaluate(model, test_set, n)
       map_, ndcg_ = metrics.meanAveragePrecision, metrics.precisionAt(10)
       map_scores[num, param_idx] = map_
       ndcg_scores[num, param_idx] = ndcg_
@@ -111,10 +118,12 @@ def cv_best_params(cv_scores):
   cv_scores = sorted(cv_scores, key=lambda x: x[1,0])
   best_result = cv_scores[-1]
   best_params = best_result[0,:]
-  return best_params, best_result
+  return best_params, best_result, cv_scores
 
 ############################################################################
 start_time = time()
+
+virtual_training, virtual_test = load_user_groups(song_dict, group_size=4)
 
 print("Initializing Spark....")
 spark = SparkSession\
@@ -125,23 +134,18 @@ spark = SparkSession\
 
 sc = spark.sparkContext
 
-print("Starting cross validation...")
-paramGrid = form_param_grid([20, 50, 100, 200], [0.01, 1.0, 10.0], [0.1, 10.0, 40.0])
-paramGrid.append([50, 5.0, 10.0])
-cv_scores = cross_validation(subsets, paramGrid, n=200)
+#print("Starting cross validation...")
+#paramGrid = form_param_grid([20, 50], [0.01, 1.0, 10.0], [0.1, 10.0, 40.0])
+#paramGrid.append([50, 5.0, 10.0])
+#cv_scores = cross_validation(subsets, paramGrid, n=200)
+#
+#best_params, best_result, cv_scores_sorted = cv_best_params(cv_scores)
 
-best_params, best_result = cv_best_params(cv_scores)
-
-#map_list = []
-#for param in paramGrid:
-#  metrics = evaluate(virtual_training, virtual_test, param, virtual=True)
-#  map_= metrics.meanAveragePrecision
-#  map_list.append([param, map_])
-
-#train_rdd, test_set = form_and_rdd(train_DF, test_DF)
-#metrics = evaluate(train_rdd, test_set, [50, 1.0, 0.1], n=200)
-#map_= metrics.meanAveragePrecision
-#ndcg_= metrics.precisionAt(10)
+train_rdd, test_set = form_and_rdd(train_DF, test_DF)
+model = train(train_rdd, [50, 5.0, 10.0])
+metrics = evaluate(model, test_set, n=20)
+map_= metrics.meanAveragePrecision
+ndcg_= metrics.precisionAt(10)
 
 elapsed_time = time()-start_time
 

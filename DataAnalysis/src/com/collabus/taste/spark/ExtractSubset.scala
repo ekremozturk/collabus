@@ -65,13 +65,13 @@ object ExtractSubset {
     
     val triplets = spark.sql("SELECT * FROM unTriplets")
     
-    val songSubset = spark.sql("SELECT ID FROM spmTriplets").sample(true, 0.015)
+    val songSubset = spark.sql("SELECT ID FROM spmTriplets WHERE occurCount>50 and mean<2")
     
     //val joinUser = triplets.join(userSubset, $"userID"===$"ID").drop("ID")
     
     val joinSong = triplets.join(songSubset, $"songID"===$"ID").drop("ID").cache()
     
-    val valUsers = joinSong.groupBy("userID").count().filter($"count">4).drop("count")
+    val valUsers = joinSong.groupBy("userID").count().filter($"count">10).drop("count")
     
     val subset = joinSong.join(valUsers, "userID").cache()
     
@@ -79,12 +79,12 @@ object ExtractSubset {
     
     val numDistinctSongs = numOfDistinct(subset, "songID")
     
-    val result = subset.collect()
-    //val result = subset.count()
-    writeToFile(result, "/Users/ekrem/No-cloud/datasets4senior/echonest/subset/train_triplets.txt")
+    //val result = subset.collect()
+    val result = subset.count()
+    //writeToFile(result, "/Users/ekrem/No-cloud/datasets4senior/echonest/subset/train_triplets.txt")
     
-    println("There are "+numDistinctUsers+" users, "+numDistinctSongs+" songs, "+result.length+" triplets")
-    //println("There are "+numDistinctUsers+" users, "+numDistinctSongs+" songs, "+result+" triplets")
+    //println("There are "+numDistinctUsers+" users, "+numDistinctSongs+" songs, "+result.length+" triplets")
+    println("There are "+numDistinctUsers+" users, "+numDistinctSongs+" songs, "+result+" triplets")
     spark.stop()
       
   }

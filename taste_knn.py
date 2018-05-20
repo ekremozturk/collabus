@@ -106,7 +106,7 @@ start_time = time()
 print('Recommending...')
 #recommendations = rec_every_user(n=200)
 #recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=200)
-recommendations = fn.rec_random(R, songs, n=50)
+recommendations = fn.rec_random(R, songs, n=200)
 ext_recommendations = fn.extract_recommendations(recommendations, knn=True)
 
 print("Preparing for metrics...")
