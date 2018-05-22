@@ -235,12 +235,19 @@ def group_users(userIDs, g_size):
   
   return groups
   
-def agg_fn(agg, item):
+def agg_fn(agg, item, weights = None):
   if(agg=='avg'):
     return item[item>0].mean()
   if(agg=='normalized_avg'):
     item = item[item>0].apply(log)+1
     return exp(item.mean())
+  if(agg=='least_misery'):
+    return item[item>0].min()
+  if(agg=='median'):
+    return item[item>0].median()
+  if(agg=='weighted_avg'):
+    weighted_item = np.multiply(item, weights)
+    return weighted_item[weighted_item>0.0].mean()
 
 def form_groups(userGroups, train_data, test_data):
   merged_train_ratings = []
@@ -280,15 +287,30 @@ def load_groups(size=4):
   
   return train, test
   
-def form_virtual_users(groups, song_dict, agg = 'avg'):
+def form_group_weights(groups, user_dict, users):
+  groups_weights = []
+  for group in groups:
+    group_users = list(group.columns.values)
+    group_weights = []
+    for userID in group_users:
+      user_idx = user_dict[userID]
+      group_weights.append(1.0/float(users.loc[user_idx]['mean']))
+    groups_weights.append(group_weights) 
+    
+  return groups_weights
+
+def form_virtual_users(groups, song_dict, agg = 'avg', groups_weights=None):
   virtual_users = []
   count = 0
-  for group in groups:
-    
+  for group_idx, group in enumerate(groups):
     virtual_user = []
     
     for idx, item in group.iterrows():
-      virtual_user.append(agg_fn(agg, item))
+      if(agg=='weighted_avg'):
+        weights = groups_weights[group_idx]
+        virtual_user.append(agg_fn(agg, item, weights))
+      else:  
+        virtual_user.append(agg_fn(agg, item))
     virtual_users.append(pd.Series(virtual_user, index = group.index.values).fillna(0))
     count += 1
     if count%10 == 0:
@@ -308,13 +330,6 @@ def form_and_save_groups(userIDs, train_data, test_data):
   with open("test4.txt", "wb") as fp:   #Pickling
     pickle.dump(test_groups, fp)
     
-  user_groups = group_users(userIDs, 8)
-  train_groups, test_groups = form_groups(user_groups, train_data, test_data)
-  with open("train8.txt", "wb") as fp:   #Pickling
-    pickle.dump(train_groups, fp)
-  with open("test8.txt", "wb") as fp:   #Pickling
-    pickle.dump(test_groups, fp)
-    
   user_groups = group_users(userIDs, 12)
   train_groups, test_groups = form_groups(user_groups, train_data, test_data)
   with open("train12.txt", "wb") as fp:   #Pickling
@@ -331,18 +346,18 @@ def extract_most_pop(songs, n):
   
   return by_tot_play, by_occurence, by_mean
   
-def rec_most_pop(R, songs,  by = 'occ', n=20):
+def rec_most_pop(users, songs,  by = 'occ', n=20):
   
   totPlay, occ, mean = extract_most_pop(songs, n)
   
   if by == 'tot':
-    return pd.DataFrame(np.full((len(R), n), totPlay, dtype=int), index=np.arange(len(R)))
+    return pd.DataFrame(np.full((len(users), n), totPlay, dtype=int), index=np.arange(len(users)))
   elif by == 'occ':
-    return pd.DataFrame(np.full((len(R), n), occ, dtype=int), index=np.arange(len(R)))
+    return pd.DataFrame(np.full((len(users), n), occ, dtype=int), index=np.arange(len(users)))
   elif by == 'mean':
-    return pd.DataFrame(np.full((len(R), n), mean, dtype=int), index=np.arange(len(R)))
+    return pd.DataFrame(np.full((len(users), n), mean, dtype=int), index=np.arange(len(users)))
   
-def rec_random(R, songs, n=20):
+def rec_random(users, songs, n=20):
   by_random= songs.sample(frac=0.2).iloc[:n].index.values
-  return pd.DataFrame(np.full((len(R), n), by_random, dtype=int), index=np.arange(len(R)))
+  return pd.DataFrame(np.full((len(users), n), by_random, dtype=int), index=np.arange(len(users)))
   

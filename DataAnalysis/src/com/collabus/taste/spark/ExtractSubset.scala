@@ -63,11 +63,9 @@ object ExtractSubset {
     val schemaSPM = spmTriplets.toDS
     schemaSPM.createOrReplaceTempView("spmTriplets")
     
-    val triplets = spark.sql("SELECT * FROM unTriplets")
+    val triplets = spark.sql("SELECT * FROM unTriplets WHERE playCount>1")
     
-    val songSubset = spark.sql("SELECT ID FROM spmTriplets WHERE occurCount>100 and mean<2")
-    
-    //val joinUser = triplets.join(userSubset, $"userID"===$"ID").drop("ID")
+    val songSubset = spark.sql("SELECT ID FROM spmTriplets WHERE occurCount>500 and mean>4") 
     
     val joinSong = triplets.join(songSubset, $"songID"===$"ID").drop("ID").cache()
     
@@ -79,12 +77,12 @@ object ExtractSubset {
     
     val numDistinctSongs = numOfDistinct(subset, "songID")
     
-    //val result = subset.collect()
-    val result = subset.count()
-    //writeToFile(result, "/Users/ekrem/No-cloud/datasets4senior/echonest/subset/train_triplets.txt")
+    val result = subset.collect()
+    //val result = subset.count()
+    writeToFile(result, "/Users/ekrem/No-cloud/datasets4senior/echonest/subset/train_triplets.txt")
     
-    //println("There are "+numDistinctUsers+" users, "+numDistinctSongs+" songs, "+result.length+" triplets")
-    println("There are "+numDistinctUsers+" users, "+numDistinctSongs+" songs, "+result+" triplets")
+    println("There are "+numDistinctUsers+" users, "+numDistinctSongs+" songs, "+result.length+" triplets")
+    //println("There are "+numDistinctUsers+" users, "+numDistinctSongs+" songs, "+result+" triplets")
     spark.stop()
       
   }

@@ -15,33 +15,33 @@ start_time = time()
 
 print('Loading..')
 triplets, users, songs = fn.load_files()
+userIDs, songIDs = fn.ids(users, songs) #only ids
+user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs) #dictionaries
 
-#only ids
-userIDs, songIDs = fn.ids(users, songs)
+#=============================================================================
 
-#dictionaries
-user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
+#triplets = fn.replace_DF(triplets, user_dict, song_dict)
+#print('Splitting into train and test sets..')
+#train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
+#print('Forming record and similarity matrices..')
+#R, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
+#R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = True)
 
-triplets = fn.replace_DF(triplets, user_dict, song_dict)
+#=============================================================================
 
-print('Splitting into train and test sets..')
-train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
+print("Forming virtual users....")
+train_groups, test_groups = fn.load_groups(12)
+groups_weights = fn.form_group_weights(train_groups, user_dict, users)
+virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='normalized_avg')
+virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='normalized_avg')
+R, M = fn.form_records(virtual_training, user_dict, song_dict, normalization = True, virtual=True)
+R_test, _ = fn.form_records(virtual_test, user_dict, song_dict, normalization = True, virtual=True)
 
-print('Forming record and similarity matrices..')
-R, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
-R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = True)
+#=============================================================================
 
-##############################################################################
-#print("Forming virtual users....")
-#train_groups, test_groups = fn.load_groups(12)
-#virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='normalized_avg')
-#virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='normalized_avg')
-#R, M = fn.form_records(virtual_training, user_dict, song_dict, normalization = True, virtual=True)
-#R_test, _ = fn.form_records(virtual_test, user_dict, song_dict, normalization = True, virtual=True)
-#
-#elapsed_time_form = time()-start_time
+elapsed_time_form = time()-start_time
 
-##############################################################################
+#=============================================================================
 
 def similar_items(songID, k=30):
   song_idx = song_dict[songID]
@@ -52,7 +52,7 @@ def similar_items(songID, k=30):
     song_tuples.append([indexes[idx],song_sim])
   return song_tuples
 
-def k_similar_items(k=30):
+def k_similar_items(k=50):
   k_sim_songs = []
   for song in songIDs:
     k_sim_songs.append(similar_items(song, k))
@@ -60,7 +60,7 @@ def k_similar_items(k=30):
 
 K = np.asarray(k_similar_items(k=50))
 
-def u_pred_i(user_idx, songID, k=30):
+def u_pred_i(user_idx, songID, k=50):
   sim_items = K[song_dict[songID]]
   sim_idx = sim_items[:,0].astype(int)
   sim_ratio = sim_items[:,1].astype(float)
@@ -68,7 +68,7 @@ def u_pred_i(user_idx, songID, k=30):
   
   return (sim_ratio*R_user).sum()/sim_ratio.sum()
 
-def form_user_prediction(user_idx, k=30):
+def form_user_prediction(user_idx, k=50):
   user_array = R[user_idx,:]
   user_pred = []
   for idx, item in enumerate(user_array):
@@ -95,16 +95,18 @@ def rec_every_user(n=20):
       print('User ' + str(count)+ ' finished -> ' + '%'+str(count/len(R)*100)+' complete! ')
   return pd.DataFrame(data = recommendations, index=np.arange(len(R)), columns=np.arange(n))
 
-_, ratings_eval = fn.form_tuples(train_DF, test_DF)
-#_, ratings_eval = fn.form_tuples(virtual_training, virtual_test, virtual=True)
+#=============================================================================
+
+#_, ratings_eval = fn.form_tuples(train_DF, test_DF)
+_, ratings_eval = fn.form_tuples(virtual_training, virtual_test, virtual=True)
 ext_ratings_eval = fn.extract_evaluations(ratings_eval)
 
 start_time = time()
 
 print('Recommending...')
-#recommendations = rec_every_user(n=20)
-#recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=20)
-recommendations = fn.rec_random(R, songs, n=20)
+recommendations = rec_every_user(n=200)
+#recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=50)
+#recommendations = fn.rec_random(R, songs, n=50)
 ext_recommendations = fn.extract_recommendations(recommendations, knn=True)
 
 print("Preparing for metrics...")
