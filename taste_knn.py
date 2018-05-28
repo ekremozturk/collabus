@@ -25,7 +25,7 @@ user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs) #dictionaries
 #train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
 #print('Forming record and similarity matrices..')
 #R, M = fn.form_records(train_DF, user_dict, song_dict, normalization = True)
-#R_test, M_test = fn.form_records(test_DF, user_dict, song_dict, normalization = True)
+#R_test, _ = fn.form_records(test_DF, user_dict, song_dict, normalization = True)
 
 #=============================================================================
 
@@ -97,20 +97,62 @@ def rec_every_user(n=20):
 
 #=============================================================================
 
+def evaluate(pred_label):
+  f1_, precision_, recall_ = fn.f1_precision_recall(pred_label)
+  mpr_ = fn.mpr(pred_label)
+  prediction_and_labels = sc.parallelize(pred_label)
+  metrics = RankingMetrics(prediction_and_labels)
+  map_= metrics.meanAveragePrecision
+  ndcg_ = metrics.ndcgAt(10)
+  return map_, ndcg_, f1_, precision_, recall_, mpr_
+
+def evaluate_knn(ext_ratings_eval):
+  scores = list()
+  
+  for n_ in fn.n_list:
+    recommendations = rec_every_user(n=n_)
+    ext_recommendations = fn.extract_recommendations(recommendations, knn=True)
+    print("Preparing for metrics...", n_)
+    pred_label = fn.prepare_prediction_label(ext_recommendations, ext_ratings_eval, knn=True)
+    scores.append(evaluate(pred_label))
+
+  scores = pd.DataFrame(scores, index = [fn.n_list], columns=['mAP', 'NDCG', 'F1', 'Precision', 'Recall', 'mPR'])
+  return scores
+  
+def evaluate_pop(ext_ratings_eval):
+  scores = list()
+  
+  for n_ in fn.n_list:
+    recommendations = fn.rec_most_pop(users, songs, by = 'occ', n=n_)
+    ext_recommendations = fn.extract_recommendations(recommendations, knn=True)
+    print("Preparing for metrics...", n_)
+    pred_label = fn.prepare_prediction_label(ext_recommendations, ext_ratings_eval, knn=True)
+    scores.append(evaluate(pred_label))
+    
+  scores = pd.DataFrame(scores, index = [fn.n_list], columns=['mAP', 'NDCG', 'F1', 'Precision', 'Recall', 'mPR'])
+  return scores
+
+
+def evaluate_rand(ext_ratings_eval): 
+  scores = list()
+  
+  for n_ in fn.n_list:
+    recommendations = fn.rec_random(R, songs, n=n_)
+    ext_recommendations = fn.extract_recommendations(recommendations, knn=True)
+    print("Preparing for metrics...", n_)
+    pred_label = fn.prepare_prediction_label(ext_recommendations, ext_ratings_eval, knn=True)
+    scores.append(evaluate(pred_label))
+    
+  scores = pd.DataFrame(scores, index = [fn.n_list], columns=['mAP', 'NDCG', 'F1', 'Precision', 'Recall', 'mPR'])
+  return scores
+
+#=============================================================================
+
 #_, ratings_eval = fn.form_tuples(train_DF, test_DF)
 _, ratings_eval = fn.form_tuples(virtual_training, virtual_test, virtual=True)
 ext_ratings_eval = fn.extract_evaluations(ratings_eval)
 
 start_time = time()
-
-print('Recommending...')
-recommendations = rec_every_user(n=200)
-#recommendations = fn.rec_most_pop(R, songs, by = 'occ', n=50)
-#recommendations = fn.rec_random(R, songs, n=50)
-ext_recommendations = fn.extract_recommendations(recommendations, knn=True)
-
-print("Preparing for metrics...")
-pred_label = fn.prepare_prediction_label(ext_recommendations, ext_ratings_eval, knn=True)
 
 from pyspark.mllib.evaluation import RankingMetrics
 from pyspark.sql import SparkSession
@@ -122,12 +164,10 @@ spark = SparkSession\
     .getOrCreate()
 
 sc = spark.sparkContext
- 
-prediction_and_labels = sc.parallelize(pred_label)
-metrics = RankingMetrics(prediction_and_labels)
-map_= metrics.meanAveragePrecision
-precision_= metrics.precisionAt(10)
-ndcg_ = metrics.ndcgAt(10)
+
+scores_knn = evaluate_knn(ext_ratings_eval)
+scores_pop = evaluate_pop(ext_ratings_eval)
+scores_rand = evaluate_rand(ext_ratings_eval)
 
 spark.stop()
 

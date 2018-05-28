@@ -10,7 +10,11 @@ import pandas as pd
 from collections import defaultdict
 from math import log, exp
 
-##############################################################################
+n_list = [20, 50, 200]
+
+agg_fns = ['avg', 'normalized_avg', 'least_misery', 'median', 'weighted_avg']
+
+#=============================================================================
 
 def load_files():
   triplets = pd.read_table('subset/train_triplets.txt',
@@ -30,14 +34,14 @@ def load_files():
   
   return triplets, users, songs
 
-##############################################################################
+#=============================================================================
   
 def ids(users, songs):
   userIDs = np.asarray(users['ID'])
   songIDs = np.asarray(songs['ID'])
   return userIDs, songIDs
 
-##############################################################################
+#=============================================================================
 
 def form_dictionaries(userIDs, songIDs):
   song_dict = dict()
@@ -55,14 +59,14 @@ def form_dictionaries(userIDs, songIDs):
 
   return user_dict, song_dict
 
-##############################################################################
-def split_into_train_test(df, frac=0.6):
-  train = df.groupby("userID", group_keys=False).apply(lambda df: df.sample(frac=frac))
+#=============================================================================
+def split_into_train_test(df, frac=0.5):
+  train = df.groupby("userID", group_keys=False).apply(lambda df: df.sample(frac=frac, random_state=42))
   test = df.drop(train.index)
   
   return train, test
 
-##############################################################################
+#=============================================================================
 def split_into_train_test_cv(df, cv=5):
   subset_list = list()
   for i in range(cv):
@@ -71,7 +75,7 @@ def split_into_train_test_cv(df, cv=5):
       subset_list.append(remain)
   return subset_list
 
-##############################################################################
+#=============================================================================
 
 def form_records(triplets, user_dict, song_dict, normalization = False, virtual=False):
   
@@ -113,7 +117,7 @@ def form_records(triplets, user_dict, song_dict, normalization = False, virtual=
       
     return R
 
-##############################################################################
+#=============================================================================
 def replace_DF(DF, user_dict, song_dict):
 
   DF = DF.applymap(lambda x: user_dict.get(x,x))
@@ -121,7 +125,7 @@ def replace_DF(DF, user_dict, song_dict):
   
   return DF
 
-##############################################################################
+#=============================================================================
 def form_tuples(train_DF, test_DF, virtual=False, knn=False):
 
   print("Creating rating tuples...")
@@ -155,7 +159,7 @@ def form_tuples(train_DF, test_DF, virtual=False, knn=False):
 
   return train_rdd, test_set
 
-##############################################################################
+#=============================================================================
 def load_subsets():
   
   train_triplets = pd.read_table('subset/train_triplets.txt',
@@ -170,7 +174,7 @@ def load_subsets():
 
   return train_triplets, test_triplets
 
-##############################################################################
+#=============================================================================
 def extract_recommendations(recommendations, knn=False):
   rec = defaultdict(list)
   
@@ -211,7 +215,7 @@ def prepare_prediction_label(recommendations, ratings, knn=False):
       tuples.append((recommend,rating_ext[song]))
   return tuples
     
-##############################################################################
+#=============================================================================
 def group_users(userIDs, g_size):
   
   np.random.shuffle(userIDs)
@@ -336,7 +340,7 @@ def form_and_save_groups(userIDs, train_data, test_data):
     pickle.dump(train_groups, fp)
   with open("test12.txt", "wb") as fp:   #Pickling
     pickle.dump(test_groups, fp)
-##############################################################################
+#=============================================================================
   
 def extract_most_pop(songs, n):
   
@@ -361,3 +365,47 @@ def rec_random(users, songs, n=20):
   by_random= songs.sample(frac=0.2).iloc[:n].index.values
   return pd.DataFrame(np.full((len(users), n), by_random, dtype=int), index=np.arange(len(users)))
   
+#=============================================================================
+  
+def f1_precision_recall(predictions_and_labels):
+  pal = np.asarray(predictions_and_labels)
+  recalls = list()
+  precisions = list()
+  
+  for tuple_ in pal:
+    recommendations = tuple_[0]
+    labels = tuple_[1]
+    
+    mask = np.isin(labels, recommendations, assume_unique=False)
+    if mask.size>0:
+      recalls.append(float(mask.sum())/float(mask.size))
+    
+    mask = np.isin(recommendations, labels, assume_unique=False)
+    if mask.size>0:
+      precisions.append(float(mask.sum())/float(mask.size))
+    
+  r = np.asarray(recalls).mean()
+  p = np.asarray(precisions).mean()
+  return 2*r*p/(r+p), p, r
+  
+def mpr(predictions_and_labels):
+  pal = np.asarray(predictions_and_labels)
+  rank = 0
+  for tuple_ in pal:
+    recommendations = tuple_[0]
+    labels = tuple_[1]
+    r_u = 0
+    for label in labels:
+      r_u += rank_ui(label, recommendations)/len(labels)
+    rank += r_u
+  
+  return rank/len(pal)
+
+    
+def rank_ui(label, recommendations):
+  if label in recommendations:
+    idx = recommendations.index(label)
+    return float(idx)/len(recommendations)*100
+  else:
+    return 100.0
+    
