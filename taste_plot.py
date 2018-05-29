@@ -129,6 +129,8 @@ plot_subset_metrics(raw_data_subset1)
 
 #=============================================================================
 
+start_time = time()
+
 def popularity_statistics(first_n, triplets, users, songs):
   songs_by_occ = songs.sort_values(by='occurence', ascending=False)[:first_n]
   idx_by_occ = songs_by_occ.index.values
@@ -145,18 +147,22 @@ def prepare_plot(triplets, users, songs):
     hist_perc, user_perc = popularity_statistics(point, triplets, users, songs)
     hist_y.append(hist_perc)
     user_y.append(user_perc)
+    print('Point', point, 'finished!')
   
   return hist_y, user_y
 
 def load_and_plot(subset_no):
+  print('Loading', subset_no)
   triplets, users, songs = fn.load_files_by_no(subset_no)
   userIDs, songIDs = fn.ids(users, songs)
   user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
+  print("Replacing IDs with indexes....")
   triplets= fn.replace_DF(triplets, user_dict, song_dict)
-  
+  print('Finished loading', subset_no)
   return prepare_plot(triplets, users, songs)
   
-subset_no = ['1','2','3']
+subset_no = ['1','2','3', '-original']
+
 x = np.arange(5,201, 5)
 hist_sets = list()
 user_sets = list()
@@ -164,6 +170,9 @@ for no in subset_no:
   hist_y, user_y = load_and_plot(no)
   hist_sets.append(hist_y)
   user_sets.append(user_y)
+  print('Subset', no,'finished!')
+
+elapsed_time = time()-start_time
 
 for y in hist_sets:
   plt.plot(x,y)
@@ -172,4 +181,3 @@ for y in hist_sets:
 for y in user_sets:
   plt.plot(x,y)
   plt.legend(subset_no)
-#hist_perc, user_perc = popularity_statistics(20)
