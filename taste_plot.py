@@ -33,13 +33,12 @@ def plot_Rand(Rand_list):
    plt.show()
    
    
-def plot_subset_metrics(raw_data):
+def plot_subset_metrics(raw_data, palette):
 
-    df = pd.DataFrame(raw_data, columns = ['algo_no', 'MF', 'kNN', 'Pop','Rand'])
+    df = pd.DataFrame(raw_data, columns = ['algo_no', 'kNN', 'Pop', 'MF'])
     # Setting the positions and width for the bars
     pos = list(range(len(df['MF']))) 
-    width = 0.2 
-    print(df['Rand']    )
+    width = 0.25 
     # Plotting the bars
     fig, ax = plt.subplots(figsize=(10,5))
     
@@ -47,13 +46,13 @@ def plot_subset_metrics(raw_data):
     # in position pos,
     plt.bar(pos, 
             #using df['MF'] data,
-            df['MF'], 
+            df['kNN'], 
             # of width
             width, 
             # with alpha 0.5
             alpha=0.8, 
             # with color
-            color='#fbb4b9', 
+            color=palette[0], 
             # with label the first value in algo_no
             label=df['algo_no'][0]) 
     
@@ -61,13 +60,13 @@ def plot_subset_metrics(raw_data):
     # in position pos + some width buffer,
     plt.bar([p + width for p in pos], 
             #using df['kNN'] data,
-            df['kNN'],
+            df['Pop'],
             # of width
             width, 
             # with alpha 0.5
             alpha=0.8, 
             # with color
-            color='#f768a1', 
+            color=palette[1], 
             # with label the second value in algo_no
             label=df['algo_no'][1]) 
     
@@ -75,58 +74,61 @@ def plot_subset_metrics(raw_data):
     # in position pos + some width buffer,
     plt.bar([p + width*2 for p in pos], 
             #using df['Pop'] data,
-            df['Pop'], 
+            df['MF'], 
             # of width
             width, 
             # with alpha 0.5
             alpha=0.8, 
             # with color 7a0177
-            color='#c51b8a', 
+            color=palette[2], 
             # with label the third value in algo_no
             label=df['algo_no'][2]) 
     
         # Create a bar with Pop data,
     # in position pos + some width buffer,
-    plt.bar([p + width*3 for p in pos], 
-            #using df['Pop'] data,
-            df['Rand'], 
-            # of width
-            width, 
-            # with alpha 0.5
-            alpha=0.8, 
-            # with color 7a0177
-            color='#7a0177',
-            # with label the third value in algo_no
-            label=df['algo_no'][3]) 
-    # Set the y axis label
-    ax.set_ylabel('Score')
+
     
     # Set the chart's title
-    ax.set_title('Metrics for Subset1')
     
     # Set the position of the x ticks
-    ax.set_xticks([p + 1.5 * width for p in pos])
+    ax.set_xticks([p + 1 * width for p in pos])
     
     # Set the labels for the x ticks
     ax.set_xticklabels(df['algo_no'])
     
     # Setting the x-axis and y-axis limits
-    plt.xlim(min(pos)-width, max(pos)+width*4)
-    plt.ylim([0, 0.6] )
+    plt.xlim(min(pos)-width, max(pos)+width*3)
+    plt.ylim([0, 0.35] )
     # set 1 afterwards
     # Adding the legend and showing the plot
-    plt.legend(['MF', 'kNN', 'Pop', 'Rand'], loc='upper left')
+    plt.legend(['kNN', 'Pop', 'MF'], loc='upper left')
     plt.grid()
     plt.show()
 ###################################################################
-raw_data_subset1 = {'algo_no': ['MAP@20', 'MAP@50', 'MAP@200', 'NDCG'],
-    'MF': [0.258671859, 0.334881281,0.346189630, 0.111],
-    'kNN': [0.409314041, 0.438968362, 0.446123075, 0.515524517],
-    'Pop': [0.262060313, 0.338270778, 0.349557471, 0.380154275],
-    'Rand': [0.002336661, 0.006184873, 0.0059568534, 0.02574817]}
+subset1_4group_map = {'algo_no': ['MAP@20', 'MAP@50', 'MAP@200'],
+    'kNN': [0.087681, 0.126087, 0.158637],
+    'Pop': [0.0402027, 0.06431, 0.0748437],
+    'MF': [0.160997, 0.260201,0.311535],
 
-plot_subset_metrics(raw_data_subset1)
+    }
 
+subset2_4group_map = {'algo_no': ['MAP@20', 'MAP@50', 'MAP@200'],
+    
+    'kNN': [0.00159152, 0.00194432, 0.00255583],
+    'Pop': [0.000982091, 0.00126922, 0.00184076],
+    'MF': [0.00756854, 0.00923323,0.0113803]
+    }
+
+subset3_4group_map = {'algo_no': ['MAP@20', 'MAP@50', 'MAP@200'],
+    
+    'kNN': [0.0213323, 0.0253505, 0.0287871],
+    'Pop': [0.0130185, 0.0154741, 0.0189481],
+    'MF': [0.0567662, 0.0676903,0.0806219]
+    }
+
+rushmore = ['#0B775E','#35274A','#F2300F', '#E1BD6D']
+
+plot_subset_metrics(subset1_4group_map,rushmore)
 #=============================================================================
 
 def popularity_statistics(first_n, triplets, users, songs):
