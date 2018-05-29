@@ -166,8 +166,10 @@ def load_and_plot(subset_no):
 subset_no = ['1','2','3', '-original']
 
 x = np.arange(5,201, 5)
+
 hist_sets = list()
 user_sets = list()
+
 for no in subset_no:
   hist_y, user_y = load_and_plot(no)
   hist_sets.append(hist_y)
@@ -175,6 +177,7 @@ for no in subset_no:
   print('Subset', no,'finished!')
 
 elapsed_time = time()-start_time
+
 for idx, y in enumerate(hist_sets):
   plt.plot(x,y ,color = rushmore [idx])
   plt.legend(subset_no)
@@ -186,5 +189,3 @@ for idx, y in enumerate(user_sets):
   plt.legend(subset_no)
   plt.xlabel("Number of Top Songs")
   plt.ylabel("Percentage")
-
-#hist_perc, user_perc = popularity_statistics(20)
