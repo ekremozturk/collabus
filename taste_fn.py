@@ -35,7 +35,27 @@ def load_files():
   return triplets, users, songs
 
 #=============================================================================
+
+def load_files_by_no(subset_no):
+  path = 'subset' + subset_no
+  triplets = pd.read_table(path+'/train_triplets.txt',
+                         sep=' ',
+                         header=None,
+                         names=['userID','itemID','playCount'])
+
+  users = pd.read_table(path+'/user_play_mean.txt',
+                         sep=' ',
+                         header=None,
+                         names=['ID','totalPlay','occurence', 'mean'])
+
+  songs = pd.read_table(path+'/song_play_mean.txt',
+                         sep=' ',
+                         header=None,
+                         names=['ID','totalPlay','occurence', 'mean'])
   
+  return triplets, users, songs
+
+#=============================================================================
 def ids(users, songs):
   userIDs = np.asarray(users['ID'])
   songIDs = np.asarray(songs['ID'])

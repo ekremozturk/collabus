@@ -33,8 +33,9 @@ triplets= fn.replace_DF(triplets, user_dict, song_dict)
 def load_user_groups(song_dict, group_size=4, agg = 'normalized_avg'):
   print("Forming user groups....")
   train_groups, test_groups = fn.load_groups(group_size)
-  virtual_training = fn.form_virtual_users(train_groups, song_dict, agg=agg)
-  virtual_test = fn.form_virtual_users(test_groups, song_dict, agg=agg)
+  groups_weights = fn.form_group_weights(train_groups, user_dict, users)
+  virtual_training = fn.form_virtual_users(train_groups, song_dict, agg=agg, groups_weights=groups_weights)
+  virtual_test = fn.form_virtual_users(test_groups, song_dict, agg=agg, groups_weights=groups_weights)
   
   return virtual_training, virtual_test
 
@@ -132,10 +133,12 @@ def before_factorization(train_rdd, test_set, params, n=20):
   return evaluate(model, test_set, n=n)
     
 #=============================================================================
-virtual_training, virtual_test = load_user_groups(song_dict, group_size=12)
 
-#paramGrid = form_param_grid([100], [0.01, 0.1, 1.0, 10.0], [0.01, 0.1, 1.0, 10.0])
-#paramGrid = form_param_grid([50, 100, 200], [0.1], [0.1])
+
+virtual_training, virtual_test = load_user_groups(song_dict, group_size=4)
+
+#paramGrid = form_param_grid([5, 10, 50, 100, 200], [0.01, 0.1, 1.0, 10.0, 100.0], [0.01, 0.1, 1.0, 10.0, 100.0])
+#paramGrid = form_param_grid([13,14,15,16,17,18,19], [0.1], [0.01])
 
 start_time = time()
 print("Initializing Spark....")
@@ -154,7 +157,9 @@ train_rdd, test_set = form_and_rdd(virtual_training, virtual_test, virtual=True)
 #for params in paramGrid:
 #  map_, ndcg_, f1_, precision_, recall_, mpr_ = before_factorization(train_rdd, test_set, params, n=200)
 #  scores.append([params, map_, ndcg_, f1_, precision_, recall_, mpr_])
-#scores = sorted(scores, key=lambda x: x[1])
+#scores_mpr = sorted(scores, key=lambda x: x[6])
+#scores_map = sorted(scores, key=lambda x: x[1])
+
 
 #map_, ndcg_, f1_, precision_, recall_, mpr_ = before_factorization(train_rdd, test_set, [20, 0.01, 0.01], n=20)
 
@@ -177,7 +182,3 @@ print("Stopping spark session...")
 spark.stop()
 print("Stopped.")
 
-#triplets, users, songs = fn.load_files()
-#print("Splitting into sets....")
-#train_DF, test_DF = fn.split_into_train_test(triplets, frac=0.5)
-#fn.form_and_save_groups(userIDs, train_DF, test_DF)

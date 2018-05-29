@@ -126,3 +126,50 @@ raw_data_subset1 = {'algo_no': ['MAP@20', 'MAP@50', 'MAP@200', 'NDCG'],
     'Rand': [0.002336661, 0.006184873, 0.0059568534, 0.02574817]}
 
 plot_subset_metrics(raw_data_subset1)
+
+#=============================================================================
+
+def popularity_statistics(first_n, triplets, users, songs):
+  songs_by_occ = songs.sort_values(by='occurence', ascending=False)[:first_n]
+  idx_by_occ = songs_by_occ.index.values
+  triplets_n = triplets.loc[triplets['itemID'].isin(idx_by_occ)]
+  hist_perc = len(triplets_n)/len(triplets)*100
+  user_perc = len(triplets_n.groupby('userID'))/len(users)*100
+  return hist_perc, user_perc
+
+def prepare_plot(triplets, users, songs):
+  points = np.arange(5,201, 5)
+  hist_y = list()
+  user_y = list()
+  for point in points:
+    hist_perc, user_perc = popularity_statistics(point, triplets, users, songs)
+    hist_y.append(hist_perc)
+    user_y.append(user_perc)
+  
+  return hist_y, user_y
+
+def load_and_plot(subset_no):
+  triplets, users, songs = fn.load_files_by_no(subset_no)
+  userIDs, songIDs = fn.ids(users, songs)
+  user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs)
+  triplets= fn.replace_DF(triplets, user_dict, song_dict)
+  
+  return prepare_plot(triplets, users, songs)
+  
+subset_no = ['1','2','3']
+x = np.arange(5,201, 5)
+hist_sets = list()
+user_sets = list()
+for no in subset_no:
+  hist_y, user_y = load_and_plot(no)
+  hist_sets.append(hist_y)
+  user_sets.append(user_y)
+
+for y in hist_sets:
+  plt.plot(x,y)
+  plt.legend(subset_no)
+  
+for y in user_sets:
+  plt.plot(x,y)
+  plt.legend(subset_no)
+#hist_perc, user_perc = popularity_statistics(20)

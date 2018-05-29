@@ -30,9 +30,9 @@ user_dict, song_dict = fn.form_dictionaries(userIDs, songIDs) #dictionaries
 #=============================================================================
 
 print("Forming virtual users....")
-train_groups, test_groups = fn.load_groups(12)
+train_groups, test_groups = fn.load_groups(4)
 groups_weights = fn.form_group_weights(train_groups, user_dict, users)
-virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='normalized_avg')
+virtual_training = fn.form_virtual_users(train_groups, song_dict, agg='normalized_avg',groups_weights = groups_weights)
 virtual_test = fn.form_virtual_users(test_groups, song_dict, agg='normalized_avg')
 R, M = fn.form_records(virtual_training, user_dict, song_dict, normalization = True, virtual=True)
 R_test, _ = fn.form_records(virtual_test, user_dict, song_dict, normalization = True, virtual=True)
@@ -165,9 +165,9 @@ spark = SparkSession\
 
 sc = spark.sparkContext
 
-scores_knn = evaluate_knn(ext_ratings_eval)
+#scores_knn = evaluate_knn(ext_ratings_eval)
 scores_pop = evaluate_pop(ext_ratings_eval)
-scores_rand = evaluate_rand(ext_ratings_eval)
+#scores_rand = evaluate_rand(ext_ratings_eval)
 
 spark.stop()
 
