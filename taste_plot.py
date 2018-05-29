@@ -167,11 +167,16 @@ for no in subset_no:
   hist_sets.append(hist_y)
   user_sets.append(user_y)
 
-for y in hist_sets:
-  plt.plot(x,y)
+for idx, y in enumerate(hist_sets):
+  plt.plot(x,y ,color = rushmore [idx])
   plt.legend(subset_no)
+  plt.xlabel("Number of Top Songs")
+  plt.ylabel("Percentage")
   
-for y in user_sets:
-  plt.plot(x,y)
+for idx, y in enumerate(user_sets):
+  plt.plot(x,y ,color = rushmore [idx])
   plt.legend(subset_no)
+  plt.xlabel("Number of Top Songs")
+  plt.ylabel("Percentage")
+
 #hist_perc, user_perc = popularity_statistics(20)
